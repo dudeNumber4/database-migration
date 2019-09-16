@@ -44,8 +44,8 @@ namespace Migrator.DatabaseMigration
         private readonly HashSet<string> _failedScripts = new HashSet<string>();
         private readonly SqlConnection _connection = new SqlConnection();
         private string _server;
-        private string _database;
         private string _connectionString;
+        private bool _journalTableExists;
 
         /// <summary>
         /// Used to execute scripts in our DatabaseScripts resource
@@ -60,6 +60,7 @@ namespace Migrator.DatabaseMigration
             {
                 if (OpenConnection())
                 {
+                      _journalTableExists = JournalTableExists();
                     foreach ((string name, object value) resource in GetResources(true))
                     {
                         var filePath = WriteResourceToFile(resource);
@@ -77,6 +78,25 @@ namespace Migrator.DatabaseMigration
                             Console.WriteLine($"Skipping script [{resource.name}]; already executed or may be in process from another client.");
                         }
                     }
+                }
+            }
+        }
+
+        private bool JournalTableExists()
+        {
+            Debug.Assert(_connection.State == ConnectionState.Open);
+            using (var cmd = new SqlCommand($"select 1 from sys.tables where name = '{TABLE_NAME}'", _connection))
+            {
+                try
+                {
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult))
+                    {
+                        return reader.HasRows;
+                    }
+                }
+                catch (SqlException)
+                {
+                    return false;
                 }
             }
         }
@@ -104,7 +124,7 @@ namespace Migrator.DatabaseMigration
         /// <returns>Pass/fail</returns>
         private bool RecordScriptInJournal(string scriptName, bool begin, SqlTransaction transaction = null)
         {
-            var result = true;
+            var result = !_journalTableExists; // If no journal table doesn't exist, return true.
 
             if (begin)
             {
@@ -121,6 +141,7 @@ namespace Migrator.DatabaseMigration
                 try
                 {
                     cmd.ExecuteNonQuery();
+                    result = true;
                 }
                 catch (SqlException ex)
                 {
@@ -164,7 +185,7 @@ namespace Migrator.DatabaseMigration
             Debug.Assert(_connection.State == ConnectionState.Open);
             // :Configure: log
             void LogError(Exception e) => Console.WriteLine($"Error checking database to determine whether script has already run: {e.Message}");
-            var result = false;
+            var result = !_journalTableExists; // If the table doesn't exist, we will want to attempt execution anyway.
             
             /// We need to ensure that we check for the presence of the record and (if good) add the record in one transaction
             /// otherwise another instance may check in the meantime and we both start the script.
@@ -384,8 +405,6 @@ namespace Migrator.DatabaseMigration
             var connectionStringBuilder = new SqlConnectionStringBuilder(connectionStr);
             _connectionString = connectionStr;
             _server = connectionStringBuilder.DataSource;
-            _database = connectionStringBuilder.InitialCatalog;
-
         }
 
         public void Dispose()
