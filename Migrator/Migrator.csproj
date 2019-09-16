@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="DatabaseMigration\DatabaseMigrationScripts.resources" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="DatabaseMigration\DatabaseMigrationScripts.resources" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Data.SqlClient" Version="4.6.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="DatabaseMigration\SqlCmdResources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>SqlCmdResources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="DatabaseMigration\SqlCmdResources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>SqlCmdResources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

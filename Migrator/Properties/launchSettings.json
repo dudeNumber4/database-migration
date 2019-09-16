@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Migrator": {
+      "commandName": "Project",
+      "commandLineArgs": "Server=.\\SQLExpress;Trusted_Connection=Yes;Database=Migration C:\\Users\\bwood\\Documents\\Data\\Crap\\DB_Up\\Scripts"
+    }
+  }
+}

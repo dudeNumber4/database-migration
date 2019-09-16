@@ -1,0 +1,10 @@
+*.dbmdl
+*.jfm
+*.log
+*.suo
+*.user
+packages
+.vs
+.cr
+**/obj/**
+**/bin/**
