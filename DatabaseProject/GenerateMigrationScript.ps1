@@ -117,7 +117,7 @@ function GenerateDiffScript {
     try {
         Write-Host "Generating diff script between [$global:TargetDacPath] and [$global:SourceDacPath]" -ForegroundColor Blue
         # middle portion of path is assumed constant.
-        $global:ScriptOutputPath = "$global:DatabaseProjRootPath\Scripts\Migrations\$([System.DateTime]::UtcNow.ToString('MM-dd-yyyy'))_$([System.DateTime]::UtcNow.Hour)_$([System.DateTime]::UtcNow.Minute).sql"
+        $global:ScriptOutputPath = "$global:DatabaseProjRootPath\Scripts\Migrations\$([System.Guid]::NewGuid().Guid).sql"
     
         # source is the new/post state; target is the current/pre state.  Seems backwards.
         & $global:SQLPackagePath /Action:Script /SourceFile:$global:SourceDacPath /TargetFile:$global:TargetDacPath /OutputPath:$global:ScriptOutputPath /TargetDatabaseName:$global:DatabaseName

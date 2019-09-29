@@ -15,7 +15,7 @@ namespace Migrator
             // :Configure: Put this somewhere passing your connection string.
             using (var sqlcmd = new SqlCmd())
             {
-                sqlcmd.Execute(@"Server=.\SQLExpress;Trusted_Connection=Yes;Database=Migration");
+                sqlcmd.RunMigrations(@"Server=.\SQLExpress;Trusted_Connection=Yes;Database=Migration");
             }
             Console.WriteLine("done");
             Console.ReadLine();

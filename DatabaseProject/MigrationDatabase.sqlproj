@@ -67,7 +67,6 @@
   <ItemGroup>
     <Build Include="dbo\Tables\Entity.sql" />
     <Build Include="dbo\Tables\Metadata.sql" />
-    <Build Include="dbo\Tables\MigrationsJournal.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="UpdateProject.scmp" />
@@ -76,5 +75,7 @@
     <None Include="DatabaseState.dacpac" />
     <None Include="CommitDatabaseScripts.ps1" />
     <None Include="Common.psm1" />
+    <None Include="Scripts\MigrationsJournal.sql" />
+    <None Include="Scripts\Migrations\Script1.sql" />
   </ItemGroup>
 </Project>
