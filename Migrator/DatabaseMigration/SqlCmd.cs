@@ -38,6 +38,7 @@ namespace Migrator.DatabaseMigration
         private string _scriptResourceFilePath;
         private string _server;
         private string _connectionString;
+        private bool _sqlcmdFoundOnPath;
 
         public void Dispose()
         {
@@ -59,7 +60,7 @@ namespace Migrator.DatabaseMigration
         {
             SetConnectionStrings(connectionStr);
             CreateSqlCmdDir();
-            var sqlCmdPath = Path.Combine(_sqlCmdDir, $"{nameof(SqlCmd)}.exe");
+            var sqlCmdPath = GetSqlCmdExePath();
             if (ExtractScriptResourceFile())
             {
                 if (OpenConnection())
@@ -101,6 +102,12 @@ namespace Migrator.DatabaseMigration
                 }
             }
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>Path to where we streamed it to, if necessary, otherwise just "sqlcmd" since it was found on the path.</returns>
+        private string GetSqlCmdExePath() => _sqlcmdFoundOnPath ? nameof(SqlCmd) : Path.Combine(_sqlCmdDir, $"{nameof(SqlCmd)}");
 
         private bool OpenConnection()
         {
@@ -206,6 +213,15 @@ namespace Migrator.DatabaseMigration
             _sqlCmdDir = Path.Combine(Path.GetTempPath(), nameof(SqlCmd));
             DirectoryUtils.FlushDirectory(_sqlCmdDir, true); // in case left over from previous run.
             Directory.CreateDirectory(_sqlCmdDir);
+            _sqlcmdFoundOnPath = SqlCmdFoundOnPath();
+            if (!_sqlcmdFoundOnPath)
+            {
+                StreamOutSqlCmdExecutablesFromResource();
+            }
+        }
+
+        private void StreamOutSqlCmdExecutablesFromResource()
+        {
             foreach (var resource in GetResources(false))
             {
                 WriteResourceToFile(resource);
@@ -218,6 +234,7 @@ namespace Migrator.DatabaseMigration
         /// <param name="resource">Result of call to <see cref="GetResources"/> </param>
         private string WriteResourceToFile((string name, object value) resource)
         {
+            Debug.Assert(Directory.Exists(_sqlCmdDir));
             var filePath = Path.Combine(_sqlCmdDir, resource.name);  // expected that the key is the file name.
             if (resource.value is string)
             {
@@ -286,7 +303,7 @@ namespace Migrator.DatabaseMigration
         /// <returns>Materialized list because it must be ordered.</returns>
         private List<DictionaryEntry> GetOrderedScripts(bool skipFirstScript = true)
         {
-            // The first script should always be the journal table creation script.
+            // The first script should always be the journal table creation script.  CommitDatabaseScripts.ps1 back in the database project should've enforced that.
             var result = GetNumericResources().OrderBy(de => Convert.ToInt32(de.Key)).ToList();
             if (skipFirstScript)
             {
@@ -318,6 +335,28 @@ namespace Migrator.DatabaseMigration
             var connectionStringBuilder = new SqlConnectionStringBuilder(connectionStr);
             _connectionString = connectionStr;
             _server = connectionStringBuilder.DataSource;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>True if SqlCmd has been installed.</returns>
+        /// <remarks>If installing on linux, perform optional step: Add /opt/mssql-tools/bin/ to your PATH environment variable</remarks>
+        private static bool SqlCmdFoundOnPath()
+        {
+            try
+            {
+                // There seems to be agreement that this is preferrable to searching all over all environment variables.  It may be just as performant, too.
+                using (var p = Process.Start(nameof(SqlCmd)))
+                {
+                    p.Kill();
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
     }

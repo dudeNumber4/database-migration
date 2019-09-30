@@ -12,12 +12,12 @@ namespace Migrator
 
         static int Main(string[] args)
         {
-            // :Configure: Put this somewhere passing your connection string.
+            // :Configure: Put this somewhere in your service startup passing your connection string.
             using (var sqlcmd = new SqlCmd())
             {
                 sqlcmd.RunMigrations(@"Server=.\SQLExpress;Trusted_Connection=Yes;Database=Migration");
             }
-            Console.WriteLine("done");
+            Console.WriteLine("Done with migrations.");
             Console.ReadLine();
             return 0;
         }
