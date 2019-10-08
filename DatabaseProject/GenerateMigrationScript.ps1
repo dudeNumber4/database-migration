@@ -15,6 +15,16 @@ $global:ScriptOutputPath = ''
 
 <#
 .DESCRIPTION
+Easiest way to verify that the build output will be where expected.
+#>
+function EnsureDebugConfigurationSelected {
+    if ($dte.ActiveSolutionProjects.Object.CurrentConfigName.ConfigName -ne 'Debug') {
+        throw 'Please select Debug configuration and run again.'
+    }
+}
+
+<#
+.DESCRIPTION
 Finds a file located within the current VS running location.
 $DevEnvExe comes from ($dte).FileName, path to IDE exe
 #>
@@ -160,6 +170,7 @@ function PrependCommentTo([string] $path) {
 
 # MAIN
 EnsureDatabaseProjectSelected
+EnsureDebugConfigurationSelected
 SetProjectBasedGlobals
 find-executables
 
