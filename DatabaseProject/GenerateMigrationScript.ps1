@@ -130,7 +130,7 @@ function GenerateDiffScript {
         $global:ScriptOutputPath = "$global:DatabaseProjRootPath\Scripts\Migrations\$([System.Guid]::NewGuid().Guid).sql"
     
         # source is the new/post state; target is the current/pre state.  Seems backwards.
-        & $global:SQLPackagePath /Action:Script /SourceFile:$global:SourceDacPath /TargetFile:$global:TargetDacPath /OutputPath:$global:ScriptOutputPath /TargetDatabaseName:$global:DatabaseName
+        & $global:SQLPackagePath /Action:Script /SourceFile:$global:SourceDacPath /TargetFile:$global:TargetDacPath /OutputPath:$global:ScriptOutputPath /TargetDatabaseName:$global:DatabaseProjectName
   
         if ((Test-Path $global:ScriptOutputPath) -ne $true) {
             throw 'Failed to create diff script.'

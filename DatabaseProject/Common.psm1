@@ -1,7 +1,4 @@
-﻿# :Configure: hard-coded real database name.  Nowhere in a database project is that defined.
-$global:DatabaseName = 'Migration'
-
-# "source" will actually be the newly generated dacpac
+﻿# "source" will actually be the newly generated dacpac
 # "target" will actually be the existing state
 # see comments in GenerateDiffScript
 $global:SourceDacPath = ''

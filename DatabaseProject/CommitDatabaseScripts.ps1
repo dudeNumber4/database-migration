@@ -14,7 +14,7 @@ $global:MigrationTableScriptNameColumn = 'ScriptName'
 $global:MigrationTableAppliedAttemptedColumn = 'AppliedAttempted'
 $global:MigrationTableAppliedCompletedColumn = 'AppliedCompleted'
 # :Configure: Adjust as necessary.  Assumes all devs can share same local connection string.
-$global:conStr = "Server=.\SQLEXPRESS;Database=$DatabaseName;Trusted_Connection=Yes"
+$global:conStr = "Server=.\SQLEXPRESS;Database=$global:DatabaseProjectName;Trusted_Connection=Yes"
 # Set after determining solution root
 $global:ResourceFilePath = ''
 $global:ResourceFileBackupPath = ''
@@ -31,7 +31,7 @@ $global:NextScriptKey = 0
 function get-open-connection() {
     try {
         $result = New-Object System.Data.SqlClient.SqlConnection
-        $result.ConnectionString = $conStr
+        $result.ConnectionString = $global:conStr
         $result.Open()
         $result
     }
@@ -125,6 +125,7 @@ function UpdateDatabaseStateDacPac {
 
 function TestScriptRelatedPaths {
     # dunno how to chain these
+    Write-Host "Testing script related paths." -ForegroundColor Blue
     if (Test-Path $global:MigrationScriptPath) {
         if (Test-Path $global:AdHocScriptPath) {
             if (Test-Path $global:ResourceFilePath) {
@@ -168,7 +169,7 @@ function AddToResource([string] $scriptPath, [bool]$adHoc = $False) {
         $scriptContent = Get-Content -Path $scriptPath -Delimiter '\0'
         if ($adHoc) {
             # For ad-hoc scripts add a using statement to set the database so we don't have to require fully qualified database object names.
-            $scriptContent = "use [$global:DatabaseName];$([System.Environment]::NewLine)$scriptContent"
+            $scriptContent = "use [$global:DatabaseProjectName];$([System.Environment]::NewLine)$scriptContent"
         }
         $global:NewResources += @{ Key = ($global:NextScriptKey).ToString(); Value = $scriptContent }
     } 
@@ -186,6 +187,7 @@ Note that the journal table doesn't have to be present for the service.  So a ne
 without the journal table and it would be the first thing created.
 #>
 function EnsureJournalTablePresent {
+    Write-Host "Ensuring Journal Table is present." -ForegroundColor Blue
     $con = get-open-connection
     try {
         $cmd = get-command $con "select 1 from sys.tables where name = '$global:MigrationTableName'"
