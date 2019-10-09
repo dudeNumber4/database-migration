@@ -2,7 +2,6 @@ using Migrator.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Globalization;
@@ -28,9 +27,9 @@ namespace Migrator.DatabaseMigration
         /// Embedded resource file
         /// </summary>
         private const string SCRIPT_RESOURCE_FILE_NAME = "DatabaseMigrationScripts.resources";
+        private const string TABLE_CREATION = "if not exists (select 1 from sys.databases where [name] = '{0}') CREATE DATABASE [{0}]";
 
         private readonly HashSet<string> _failedScripts = new HashSet<string>();
-        private readonly SqlConnection _connection = new SqlConnection();
 
         // :Configure: Your service namespace names here.  This is how the embedded resource will be named.
         private string _fullyQualifiedScriptResourceName = $"{nameof(Migrator)}.{nameof(DatabaseMigration)}.{SCRIPT_RESOURCE_FILE_NAME}";
@@ -38,6 +37,7 @@ namespace Migrator.DatabaseMigration
         private string _scriptResourceFilePath;
         private string _server;
         private string _connectionString;
+        private string _databaseName;
         private bool _sqlcmdFoundOnPath;
 
         public void Dispose()
@@ -46,59 +46,60 @@ namespace Migrator.DatabaseMigration
             {
                 DirectoryUtils.FlushDirectory(_sqlCmdDir, true);
             }
-            if (_connection.State == ConnectionState.Open)
-            {
-                _connection.Close();
-            }
         }
 
         /// <summary>
         /// Used to execute scripts in our DatabaseScripts resource
         /// </summary>
         /// <param name="connectionStr">Connection String.</param>
-        public void RunMigrations(string connectionStr)
+        public void PerformMigrations(string connectionStr)
         {
             SetConnectionStrings(connectionStr);
             CreateSqlCmdDir();
             var sqlCmdPath = GetSqlCmdExePath();
             if (ExtractScriptResourceFile())
             {
-                if (OpenConnection())
+                EnsureDatabaseCreated(sqlCmdPath);
+                RunMigrations(sqlCmdPath);
+            }
+        }
+
+        private void RunMigrations(string sqlCmdPath)
+        {
+            using (var journalTable = new JournalTable(_connectionString, _failedScripts, GetJournalCreationScript()))
+            {
+                if (journalTable.EnsureJournalTableExists())
                 {
-                    var journalTable = new JournalTable(_connection, _failedScripts, GetJournalTableCreationScript());
-                    if (journalTable.EnsureJournalTableExists())
+                    try
                     {
-                        try
+                        foreach ((string name, object value) resource in GetResources(true))
                         {
-                            foreach ((string name, object value) resource in GetResources(true))
+                            var filePath = WriteResourceToFile(resource);
+                            if (journalTable.TryAcquireLockFor(resource.name))
                             {
-                                var filePath = WriteResourceToFile(resource);
-                                if (journalTable.TryAcquireLockFor(resource.name))
+                                CreateProcessFor(sqlCmdPath, filePath);
+                                if (!journalTable.RecordScriptInJournal(resource.name, false))
                                 {
-                                    CreateProcessFor(sqlCmdPath, filePath);
-                                    if (!journalTable.RecordScriptInJournal(resource.name, false))
-                                    {
-                                        break; // logged
-                                    }
-                                }
-                                else
-                                {
-                                    // :Configure: log
-                                    Console.WriteLine($"Skipping script [{resource.name}]; already executed or may be in process from another client.");
+                                    break; // logged
                                 }
                             }
-                        }
-                        catch (FormatException ex)
-                        {
-                            // :Configure: log
-                            Console.WriteLine($"Error encountered during processing of script resources.  Resource file may be corrupted: {ex.Message}");
+                            else
+                            {
+                                // :Configure: log
+                                Console.WriteLine($"Skipping script [{resource.name}]; already executed or may be in process from another client.");
+                            }
                         }
                     }
-                    else
+                    catch (FormatException ex)
                     {
                         // :Configure: log
-                        Console.WriteLine($"Unable to create/ensure presence of table {JournalTable.TABLE_NAME}");
+                        Console.WriteLine($"Error encountered during processing of script resources.  Resource file may be corrupted: {ex.Message}");
                     }
+                }
+                else
+                {
+                    // :Configure: log
+                    Console.WriteLine($"Unable to create/ensure presence of table {JournalTable.TABLE_NAME}");
                 }
             }
         }
@@ -109,20 +110,15 @@ namespace Migrator.DatabaseMigration
         /// <returns>Path to where we streamed it to, if necessary, otherwise just "sqlcmd" since it was found on the path.</returns>
         private string GetSqlCmdExePath() => _sqlcmdFoundOnPath ? nameof(SqlCmd) : Path.Combine(_sqlCmdDir, $"{nameof(SqlCmd)}");
 
-        private bool OpenConnection()
+        /// <summary>
+        /// No way to *lock* at the server level.  If multiple clients hit this method at about the same time and one fails that shouldn't be a problem.
+        /// </summary>
+        /// <param name="sqlCmdPath"></param>
+        private void EnsureDatabaseCreated(string sqlCmdPath)
         {
-            _connection.ConnectionString = _connectionString;
-            try
-            {
-                _connection.Open();
-                return true;
-            }
-            catch (Exception ex) when (ex is ArgumentException || ex is SqlException)
-            {
-                // :Configure: log
-                Console.WriteLine($"Connection failed; unable to apply migrations. {ex.Message}");
-                return false;
-            }
+            var tableCreationScript = string.Format(TABLE_CREATION, _databaseName);
+            var filePath = WriteResourceToFile((nameof(tableCreationScript), tableCreationScript));
+            CreateProcessFor(sqlCmdPath, filePath);
         }
 
         /// <summary>
@@ -142,7 +138,7 @@ namespace Migrator.DatabaseMigration
                 ErrorDialog = false,
                 FileName = sqlcmdPath,  // If sqlcmd were installed proper, it would be on path and we could simply pass "SQLCMD"
                 UseShellExecute = false,
-                Arguments = $"-i {scriptPath} -S {_server}",
+                Arguments = $"-i {scriptPath} -S {_server}", // SqlCmd accepts only server, not database
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
                 StandardErrorEncoding = Encoding.UTF8,
@@ -322,7 +318,11 @@ namespace Migrator.DatabaseMigration
             }
         }
 
-        private string GetJournalTableCreationScript()
+        /// <summary>
+        /// This script contains conditional database creation + journal table creation.
+        /// </summary>
+        /// <returns></returns>
+        private string GetJournalCreationScript()
         {
             var firstResource = GetOrderedScripts(false).FirstOrDefault();
             Debug.Assert(firstResource.Key != null);
@@ -335,6 +335,7 @@ namespace Migrator.DatabaseMigration
             var connectionStringBuilder = new SqlConnectionStringBuilder(connectionStr);
             _connectionString = connectionStr;
             _server = connectionStringBuilder.DataSource;
+            _databaseName = connectionStringBuilder.InitialCatalog;
         }
 
         /// <summary>

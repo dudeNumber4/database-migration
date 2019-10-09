@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.29215.179
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Migrator", "Migrator\Migrator.csproj", "{CF0A1AB3-9213-4DAE-AE9D-6B1BA8E5B78C}"
 EndProject
-Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "MigrationDatabase", "DatabaseProject\MigrationDatabase.sqlproj", "{72AD2D9A-C48A-468E-B326-9AA7CC3F2FBC}"
+Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "MigrationDatabase", "MigrationDatabase\MigrationDatabase.sqlproj", "{72AD2D9A-C48A-468E-B326-9AA7CC3F2FBC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

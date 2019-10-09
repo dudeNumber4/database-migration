@@ -1,17 +1,15 @@
-using Migrator.Utils;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
-using System.Text;
 using System.Transactions;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Migrator.DatabaseMigration
 {
 
-    internal class JournalTable
+    internal class JournalTable : IDisposable
     {
 
         /// <summary>
@@ -23,36 +21,64 @@ namespace Migrator.DatabaseMigration
         internal const string SCRIPT_COMPLETED_COLUMN = "AppliedCompleted";
 
         private readonly HashSet<string> _failedScripts;
-        private readonly SqlConnection _connection;
+        private readonly SqlConnection _connection = new SqlConnection();
         private readonly string _journalTableCreationScript;
+        private readonly string _connectionString;
 
-        internal JournalTable(SqlConnection connection, HashSet<string> failedScripts, string journalTableCreationScript)
+        internal JournalTable(string connectionString, HashSet<string> failedScripts, string journalTableCreationScript)
         {
-            _connection = connection;
+            _connectionString = connectionString;
             _failedScripts = failedScripts;
             _journalTableCreationScript = journalTableCreationScript;
         }
 
+        public void Dispose()
+        {
+            if (_connection.State == ConnectionState.Open)
+            {
+                _connection.Close();
+            }
+        }
+
+        private bool OpenConnection()
+        {
+            _connection.ConnectionString = _connectionString;
+            try
+            {
+                _connection.Open();
+                return true;
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is SqlException)
+            {
+                // :Configure: log
+                Console.WriteLine($"Connection failed; unable to apply migrations. {ex.Message}");
+                return false;
+            }
+        }
+
         internal bool EnsureJournalTableExists()
         {
-            AssertOpenConnection();
-            var result = JournalTableExists();
-            if (!result)
+            var result = OpenConnection();
+            if (result)
             {
-                if (!string.IsNullOrEmpty(_journalTableCreationScript) && _journalTableCreationScript.Contains("create table", StringComparison.CurrentCultureIgnoreCase))
+                result = JournalTableExists();
+                if (!result)
                 {
-                    // We can't lock for this script since the locking mechanism is the table itself.  If another script tries to run this at about the same time and fails; so be it.
-                    using (var cmd = new SqlCommand(_journalTableCreationScript, _connection))
+                    if (!string.IsNullOrEmpty(_journalTableCreationScript) && _journalTableCreationScript.Contains("create table", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        try
+                        // We can't lock for this script since the locking mechanism is the table itself.  If another script tries to run this at about the same time and fails; so be it.
+                        using (var cmd = new SqlCommand(_journalTableCreationScript, _connection))
                         {
-                            cmd.ExecuteNonQuery();
-                            result = true;
-                        }
-                        catch (SqlException ex)
-                        {
-                            // :Configure: log
-                            Console.WriteLine($"Error creating table {TABLE_NAME}: {ex.Message}");
+                            try
+                            {
+                                cmd.ExecuteNonQuery();
+                                result = true;
+                            }
+                            catch (SqlException ex)
+                            {
+                                // :Configure: log
+                                Console.WriteLine($"Error creating table {TABLE_NAME}: {ex.Message}");
+                            }
                         }
                     }
                 }

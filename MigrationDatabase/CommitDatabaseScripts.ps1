@@ -1,10 +1,10 @@
 ﻿<#
-	• Looks for scripts in Migrations & AdHoc directory to add to the resource file in the console app.  Also updates the known file DatabaseState.dacpac to the current state.
-    Migrations will be added to resource and added to the database journal table; assumes developer has already made these changes.
-    AdHoc will be added to resource and NOT added to the database journal table; assumes developer has written the script but wants it to executed upon next startup of console.
-    Scripts in AdHoc will have their project reference deleted after processing if they were added via project right-click.
-	• Check :Configure: for things to change when plugging into another solution.
-	• Every reference to "$dte" is a dependency on visual studio.  The whole thing could be independent of vs, but it's much easier this way and more convenient to run it.
+• Looks for scripts in Migrations & AdHoc directory to add to the resource file in the console app.  Also updates the known file DatabaseState.dacpac to the current state.
+Migrations will be added to resource and added to the database journal table; assumes developer has already made these changes.
+AdHoc will be added to resource and NOT added to the database journal table; assumes developer has written the script but wants it to executed upon next startup of console.
+Scripts in AdHoc will have their project reference deleted after processing if they were added via project right-click.
+• Check :Configure: for things to change when plugging into another solution.
+• Every reference to "$dte" is a dependency on visual studio.  The whole thing could be independent of vs, but it's much easier this way and more convenient to run it.
 #>
 
 Import-Module "$PSScriptRoot\Common.psm1" #-Force
