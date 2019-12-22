@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Migrator", "Migrator\Migrat
 EndProject
 Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "MigrationDatabase", "MigrationDatabase\MigrationDatabase.sqlproj", "{72AD2D9A-C48A-468E-B326-9AA7CC3F2FBC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MigratorUnitTests", "MigratorUnitTests\MigratorUnitTests.csproj", "{A951D8C3-9083-4DB2-876E-63A4A03F179F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,6 +25,10 @@ Global
 		{72AD2D9A-C48A-468E-B326-9AA7CC3F2FBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{72AD2D9A-C48A-468E-B326-9AA7CC3F2FBC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{72AD2D9A-C48A-468E-B326-9AA7CC3F2FBC}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{A951D8C3-9083-4DB2-876E-63A4A03F179F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A951D8C3-9083-4DB2-876E-63A4A03F179F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A951D8C3-9083-4DB2-876E-63A4A03F179F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A951D8C3-9083-4DB2-876E-63A4A03F179F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

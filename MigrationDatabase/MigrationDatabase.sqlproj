@@ -67,14 +67,15 @@
   <ItemGroup>
     <Build Include="dbo\Tables\Entity.sql" />
     <Build Include="dbo\Tables\Metadata.sql" />
+    <Build Include="dbo\Tables\MigrationsJournal.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="UpdateProject.scmp" />
-    <None Include="GenerateMigrationScript.ps1" />
-    <None Include="temp.ps1" />
     <None Include="DatabaseState.dacpac" />
-    <None Include="CommitDatabaseScripts.ps1" />
     <None Include="Common.psm1" />
-    <None Include="Scripts\MigrationsJournal.sql" />
+    <None Include="ExtractResourceScripts.ps1" />
+    <None Include="GenerateMigrationScript.ps1" />
+    <None Include="UpdateDatabaseState.ps1" />
+    <None Include="CommitDatabaseScripts.ps1" />
   </ItemGroup>
 </Project>

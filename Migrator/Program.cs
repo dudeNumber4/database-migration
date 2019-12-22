@@ -1,4 +1,5 @@
 ﻿using Migrator.DatabaseMigration;
+using Migrator.DatabaseMigration.Utils;
 using System;
 using System.Collections;
 using System.Linq;
@@ -13,9 +14,9 @@ namespace Migrator
         static int Main(string[] args)
         {
             // :Configure: Put this somewhere in your service startup passing your connection string.
-            using (var sqlcmd = new SqlCmd())
+            using (var migrator = new DatabaseMigrator(new ConsoleStartupLogger()))
             {
-                sqlcmd.PerformMigrations(@"Server=.\SQLExpress;Trusted_Connection=Yes;Database=MigrationDatabase");
+                migrator.PerformMigrations(@"Server=.\SQLExpress;Trusted_Connection=Yes;Database=MigrationDatabase");
             }
             Console.WriteLine("Done with migrations.");
             Console.ReadLine();

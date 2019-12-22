@@ -1,24 +1,32 @@
+using Migrator.DatabaseMigration.Utils;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace Migrator.Utils
+namespace Migrator.DatabaseMigration.Utils
 {
 
     /// <summary>
-    /// This belongs in a shared library.
+    /// This belongs in a shared library.  Except I'm passing in a logger because we have no DI yet.
     /// </summary>
     public static class FileUtils
     {
 
         /// <summary>
-        /// :Configure: accept log provider?
+        /// xx
         /// </summary>
         /// <param name="s">Stream.</param>
         /// <param name="path">Path of file to create.</param>
         /// <returns>pass/fail</returns>
-        public static bool StreamToFile(Stream s, string path)
+        /// <param name="logger">Startup logger because we have no DI.</param>
+        public static bool StreamToFile(Stream s, string path, IStartupLogger logger)
         {
+            if (s == null)
+            {
+                return false;
+            }
+
             try
             {
                 using (var f = File.Create(path))
@@ -28,38 +36,51 @@ namespace Migrator.Utils
                 }
                 return true;
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException e)
             {
-                UnauthorizedAccessMsg(path);
+                logger?.LogException(e);
             }
-            catch (ArgumentException)
+            catch (ArgumentException e)
             {
-                ArgumentMsg();
+                logger?.LogException(e);
             }
-            catch (PathTooLongException)
+            catch (PathTooLongException e)
             {
-                PathTooLongMsg(path);
+                logger?.LogException(e);
             }
-            catch (DirectoryNotFoundException)
+            catch (DirectoryNotFoundException e)
             {
-                DirectoryNotFoundMsg(path);
+                logger?.LogException(e);
             }
-            catch (IOException)
+            catch (IOException e)
             {
-                IOMsg(path);
+                logger?.LogException(e);
             }
-            catch (NotSupportedException)
+            catch (NotSupportedException e)
             {
-                NotSupportedMsg(path);
+                logger?.LogException(e);
             }
 
             return false;
         }
 
+        public static IEnumerable<string> GetFilesWithNoExtension(string dir)
+        {
+            if (Directory.Exists(dir))
+            {
+                return Directory.EnumerateFiles(dir, "*.");
+            }
+            else
+            {
+                return Enumerable.Empty<string>();
+            }
+        }
+
         /// <summary>Safely deletes a file - no exception if operation fails</summary>
         /// <param name="path">File to delete</param>
         /// <param name="forceDelete">Try to alter flags (if necessary) to accomplish delete</param>
-        public static void SafeDeleteFile(string path, bool forceDelete)
+        /// <param name="logger">Startup logger because we have no DI.</param>
+        public static void SafeDeleteFile(string path, bool forceDelete, IStartupLogger logger)
         {
             if (string.IsNullOrEmpty(path))
                 return;
@@ -77,39 +98,31 @@ namespace Migrator.Utils
                     File.Delete(path);
                 }
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException e)
             {
-                UnauthorizedAccessMsg(path);
+                logger?.LogException(e);
             }
-            catch (ArgumentException)
+            catch (ArgumentException e)
             {
-                ArgumentMsg();
+                logger?.LogException(e);
             }
-            catch (PathTooLongException)
+            catch (PathTooLongException e)
             {
-                PathTooLongMsg(path);
+                logger?.LogException(e);
             }
-            catch (DirectoryNotFoundException)
+            catch (DirectoryNotFoundException e)
             {
-                DirectoryNotFoundMsg(path);
+                logger?.LogException(e);
             }
-            catch (IOException)
+            catch (IOException e)
             {
-                IOMsg(path);
+                logger?.LogException(e);
             }
-            catch (NotSupportedException)
+            catch (NotSupportedException e)
             {
-                NotSupportedMsg(path);
+                logger?.LogException(e);
             }
         }
-
-        // :configure: Log
-        static void UnauthorizedAccessMsg(string path) => Console.WriteLine($"Unauthorized to write file: {path}");
-        static void ArgumentMsg() => Console.WriteLine("Null path passed, unable to write file.");
-        static void PathTooLongMsg(string path) => Console.WriteLine($"Unable to write file, path too long: {path}");
-        static void DirectoryNotFoundMsg(string path) => Console.WriteLine($"Unable to write file, invalid directory: {path}");
-        static void IOMsg(string path) => Console.WriteLine($"Unable to write file, I/O error: {path}");
-        static void NotSupportedMsg(string path) => Console.WriteLine($"Unable to write file, invalid path: {path}");
 
     }
 
