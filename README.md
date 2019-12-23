@@ -96,7 +96,10 @@ A (mostly) 2-part system for automating the propogation of database changes thro
 ##### Merge Conflicts
 * Merge conflicts (another team member merged database changes before yours) are non-resolvable.  In this event, you will have to re-do your changes:
   1. Whether you made them there, your changes should be present in your local database because you've tested them.  So I'll make that assumption.
-  2. Undo changes in the database project and changes to the file DatabaseMigrationScripts.resources.
+  2. Undo changes on the following:
+     1. In the database project (unless the only change you made was to add an ad-hoc script).
+     2. DatabaseMigrationScripts.resources
+     3. DatabaseState.dacpac.
   3. Follow instructions under main "Usage" section above.  Don't forget to re-do the step to transfer database changes to the database project via UpdateProject.scmp if necessary.
 
 ###### Manual Test Plan

@@ -227,7 +227,10 @@ function ProcessAdHocDirectory {
             # Remove the item from the project if present.  Active project has been enforced to be the database project.
             $scriptProjectItem = FindScriptInProjectItems $dte.ActiveSolutionProjects $_.Name # file name only
             if ($null -ne $scriptProjectItem) {
-                $scriptProjectItem.Remove() # Remove the project item; we added it to the resource, we don't want it as part of DB project anymore.
+                # Remove the project item; we added it to the resource, we don't want it as part of DB project anymore (it will normally be there because we right-clicked and added from the Ad-Hoc dir).
+                $scriptProjectItem.Remove()
+                # Issue save command to remove the above file reference from the database project file.
+                $dte.ExecuteCommand("File.SaveAll")
             }
         }
         FlushResourcesToResourceFile
