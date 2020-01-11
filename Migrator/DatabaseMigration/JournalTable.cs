@@ -34,23 +34,20 @@ namespace Migrator.DatabaseMigration
             var result = OpenConnection();
             if (result)
             {
-                result = TableExists();
-                if (!result)
+                // We can't lock for this script since the locking mechanism is the table itself.  If another script tries to run this at about the same time and fails; so be it.
+                // The creation script is idempotent.
+                if (!string.IsNullOrEmpty(_journalTableCreationScript) && _journalTableCreationScript.Contains("create table", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    if (!string.IsNullOrEmpty(_journalTableCreationScript) && _journalTableCreationScript.Contains("create table", StringComparison.CurrentCultureIgnoreCase))
+                    using (var cmd = new SqlCommand(_journalTableCreationScript, _connection))
                     {
-                        // We can't lock for this script since the locking mechanism is the table itself.  If another script tries to run this at about the same time and fails; so be it.
-                        using (var cmd = new SqlCommand(_journalTableCreationScript, _connection))
+                        try
                         {
-                            try
-                            {
-                                cmd.ExecuteNonQuery();
-                                result = true;
-                            }
-                            catch (SqlException ex)
-                            {
-                                _log.LogInfo($"Error creating table {_journalTableStructure.TableName}: {ex.Message}");
-                            }
+                            cmd.ExecuteNonQuery();
+                            result = true;
+                        }
+                        catch (SqlException ex)
+                        {
+                            _log.LogInfo($"Error executing table creation script (if not present) for table {_journalTableStructure.TableName}: {ex.Message}");
                         }
                     }
                 }
@@ -155,58 +152,6 @@ namespace Migrator.DatabaseMigration
             }
 
             return result;
-        }
-
-        private bool TableExists()
-        {
-            AssertOpenConnection();
-            using (var cmd = new SqlCommand($"select top 1 * from {_journalTableStructure.TableName}", _connection))
-            {
-                try
-                {
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult))
-                    {
-                        if (reader.FieldCount != _journalTableStructure.Columns.Count)
-                        {
-                            EnsureTableColumnsPresent(reader);
-                        }
-                        return true;
-                    }
-                }
-                catch (SqlException)
-                {
-                    return false;
-                }
-            }
-        }
-        
-        private void EnsureTableColumnsPresent(SqlDataReader reader)
-        {
-            Debug.Assert(!reader.IsClosed, "Expected journal reader to be open");
-            var columnSchema = reader.GetColumnSchema();
-            var tableChangeScripts = new List<string>();
-            _journalTableStructure.Columns.ForEach(journalColumn =>
-            {
-                if (!columnSchema.Any(c => c.ColumnName == journalColumn.name))
-                {
-                    // Assumption: any column we have to _add_ must be nullable.
-                    tableChangeScripts.Add($"alter table {_journalTableStructure.TableName} add {journalColumn.name} {journalColumn.type} null");
-                }
-            });
-            reader.Close();
-            ExecuteTableChangeScripts(tableChangeScripts);
-        }
-        
-        private void ExecuteTableChangeScripts(List<string> tableChangeScripts)
-        {
-            Debug.Assert(tableChangeScripts != null, "expected non null list");
-            tableChangeScripts.ForEach(s =>
-            {
-                using (var cmd = new SqlCommand(s, _connection))
-                {
-                    cmd.ExecuteNonQuery(); // caller catches error
-                }
-            });
         }
 
         /// <summary>

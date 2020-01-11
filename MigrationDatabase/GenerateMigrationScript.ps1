@@ -28,7 +28,7 @@ Finds a file located within the current VS running location.
 $DevEnvExe comes from ($dte).FileName, path to IDE exe
 #>
 function FindMSPath([string] $DevEnvExe, [string] $TargetExeName) {
-    Write-Host "Searching for $TargetExeName..." -ForegroundColor Blue
+    Write-Host "Searching for $TargetExeName..." -ForegroundColor DarkGreen
     $parentDir = [System.IO.Path]::GetDirectoryName($DevEnvExe)
     Set-Location $parentDir
     #  We have to exclude the forking amd version of msbuild. -Exclude doesn't work.  -notcontains does not work.
@@ -94,11 +94,11 @@ To be called by developer who has updated the database project and wants to buil
 Pre: UpdateProject.scmp has been used to update the database project.  Previous database state lives in ./DatabaseState.dacpac
 #>
 function BuildDacpac {
-    Write-Host 'Building database project' -ForegroundColor Blue
+    Write-Host 'Building database project' -ForegroundColor DarkGreen
     try {
         # $dte.ExecuteCommand('Build.BuildSelection') won't work reliably; there is NO WAY to set the current project.
         # Update: now enforcing the user select the database project
-        #Write-Host "Building Database Project [$global:DatabaseProjectName] to [$global:BuildOutputDir] using [$global:MSBuildPath]" -ForegroundColor Blue
+        #Write-Host "Building Database Project [$global:DatabaseProjectName] to [$global:BuildOutputDir] using [$global:MSBuildPath]" -ForegroundColor DarkGreen
         #& $global:MSBuildPath /p:OutDir=$global:BuildOutputDir $ProjPath
   
         # Remove any existing dacpac so we can be assured to have the latest.  If build command fails (flaky), we want the diff script to fail.
@@ -128,7 +128,7 @@ Pre: BuildDacpac has been called.  $SourceDacPath & $TargetDacPath have been set
 #>
 function GenerateDiffScript {
     try {
-        Write-Host "Generating diff script between [$global:TargetDacPath] and [$global:SourceDacPath]" -ForegroundColor Blue
+        Write-Host "Generating diff script between [$global:TargetDacPath] and [$global:SourceDacPath]" -ForegroundColor DarkGreen
         # middle portion of path is assumed constant.
         $global:ScriptOutputPath = "$global:DatabaseProjRootPath\Scripts\Migrations\$([System.Guid]::NewGuid().Guid).sql"
     
@@ -160,7 +160,7 @@ Load that file, add a comment telling the developer what to do with the new file
 #>
 function PrependCommentTo([string] $path) {
     try {
-        Write-Host "Prepending comment to [$path]" -ForegroundColor Blue
+        Write-Host "Prepending comment to [$path]" -ForegroundColor DarkGreen
         $comment = "/*           DEVELOPER!! README!!$([System.Environment]::NewLine)Review this script (does it drop a table unexpectedly?, etc.)$([System.Environment]::NewLine)If OK, close it and run CommitDatabaseScript.ps$([System.Environment]::NewLine)If the script doesn't look OK, delete this file.$([System.Environment]::NewLine)*/$([System.Environment]::NewLine)$([System.Environment]::NewLine)"
         $existingText = (Get-Content -Path $path -Delimiter '\0')
         (Set-Content -Path $path -Value "$comment$existingText")
@@ -178,7 +178,7 @@ function PrependCommentTo([string] $path) {
 #>
 function RemoveSqlCmdSpecificText([string] $path) {
     try {
-        Write-Host "Removing SqlCmd specific text from [$path]" -ForegroundColor Blue
+        Write-Host "Removing SqlCmd specific text from [$path]" -ForegroundColor DarkGreen
         # The removal of "SET NOEXEC ON" removes the one line in the chunk like below.  It'll run fine, but still print the message.  It's either this or something much more complex.
         #IF N'$(__IsSqlCmdEnabled)' NOT LIKE N'True'
         #BEGIN

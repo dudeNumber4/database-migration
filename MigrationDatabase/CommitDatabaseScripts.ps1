@@ -31,7 +31,7 @@ Script resource keys are ordered except our pre-required create journal script. 
 LoadExistingResources must have been called first.
 #>
 function GetNextScriptKey {
-    Write-Host "Counting scripts in $global:ResourceFilePath" -ForegroundColor Blue
+    Write-Host "Counting scripts in $global:ResourceFilePath" -ForegroundColor DarkGreen
     $r = GetResourceReader $global:ResourceFileBackupPath
     try {
         $junkref = 0
@@ -42,7 +42,7 @@ function GetNextScriptKey {
         if ($null -eq $max) {
             $max = 0
         }
-        Write-Host "Counted $max existing scripts." -ForegroundColor Blue
+        Write-Host "Counted $max existing scripts." -ForegroundColor DarkGreen
         $max
     }
     finally {
@@ -50,27 +50,9 @@ function GetNextScriptKey {
     }
 }
 
-<#
-.DESCRIPTION
-Takes the latest build from BuildDacPac and overwrites ./DatabaseState.dacpac with that.
-Pre: GenerateDiffScript has run.
-#>
-function UpdateDatabaseStateDacPac {
-    try {
-        Write-Host "Updating database state file [$global:SourceDacPath] -> [$global:TargetDacPath]." -ForegroundColor Blue
-        [System.IO.File]::Delete($global:TargetDacPath) > $null
-        # Copy from output dir to project location.
-        [System.IO.File]::Copy($global:SourceDacPath, $global:TargetDacPath) > $null
-    }
-    catch {
-        Write-Host $_ -ForegroundColor Red
-        exit # Without this the script may keep going
-    }
-}
-
 function TestScriptRelatedPaths {
     # dunno how to chain these
-    Write-Host "Testing script related paths." -ForegroundColor Blue
+    Write-Host "Testing script related paths." -ForegroundColor DarkGreen
     if (Test-Path $global:MigrationScriptPath) {
         if (Test-Path $global:AdHocScriptPath) {
             if (Test-Path $global:ResourceFilePath) {
@@ -114,7 +96,7 @@ Adds script at path passed in to the collection of resources $global:NewResource
 #>
 function AddToResource([string] $scriptPath) {
     $global:NextScriptKey = $global:NextScriptKey + 1
-    Write-Host "Adding $scriptPath as script #$global:NextScriptKey" -ForegroundColor Blue
+    Write-Host "Adding $scriptPath as script #$global:NextScriptKey" -ForegroundColor DarkGreen
     try {
         $scriptContent = GetScriptContent $scriptPath
         $global:NewResources += @{ Key = ($global:NextScriptKey).ToString(); Value = $scriptContent }
@@ -131,7 +113,7 @@ The script to create the journal table should be the first script in the resourc
 #>
 function EnsureJournalScriptPresent {
     if ($global:NextScriptKey -eq 0) {
-        Write-Host "No existing scripts found.  Adding journal table creation script as first." -ForegroundColor Blue
+        Write-Host "No existing scripts found.  Adding journal table creation script as first." -ForegroundColor DarkGreen
         AddToResource $global:JournalTableCreationScriptPath $True
     }
 }
@@ -143,9 +125,9 @@ Write out new resources we've loaded to $global:ResourceFilePath
 function FlushResourcesToResourceFile() {
     $writer = GetResourceWriter
     try {
-        Write-Host "Writing existing scripts to resource file." -ForegroundColor Blue
+        Write-Host "Writing existing scripts to resource file." -ForegroundColor DarkGreen
         CopyExistingResourcesToResourceFile $writer
-        Write-Host "Writing new scripts to resource file." -ForegroundColor Blue
+        Write-Host "Writing new scripts to resource file." -ForegroundColor DarkGreen
         $global:NewResources | ForEach-Object { $writer.AddResource($_.Key, $_.Value) }
     } 
     catch {
@@ -178,7 +160,7 @@ Process $global:MigrationScriptPath.
 Expected; 0 (may be running this script just for AdHoc) or 1 file.  If multiples, we assume something went wrong with previous run; probably should've deleted?
 #>
 function ProcessMigrationDirectory {
-    Write-Host "Processing scripts in $global:MigrationScriptPath" -ForegroundColor Blue
+    Write-Host "Processing scripts in $global:MigrationScriptPath" -ForegroundColor DarkGreen
     try {
         $scriptCount = (Get-Childitem $global:MigrationScriptPath | Measure-Object).Count
         if ($scriptCount -gt 1) {
@@ -218,7 +200,7 @@ Process $global:AdHocScriptPath
 Add scripts found there to known resource file.
 #>
 function ProcessAdHocDirectory {
-    Write-Host "Processing scripts in $global:AdHocScriptPath" -ForegroundColor Blue
+    Write-Host "Processing scripts in $global:AdHocScriptPath" -ForegroundColor DarkGreen
     try {
         Get-Childitem -Path $global:AdHocScriptPath | ForEach-Object {
             AddToResource $_.FullName
@@ -248,7 +230,7 @@ SetScriptSourcePaths
 EnsureExpectedDirectoriesExist
 
 if (TestScriptRelatedPaths) { # else error written to console
-    Write-Host "Creating backup of existing resources to $global:ResourceFileBackupPath" -ForegroundColor Blue
+    Write-Host "Creating backup of existing resources to $global:ResourceFileBackupPath" -ForegroundColor DarkGreen
     Copy-Item $global:ResourceFilePath $global:ResourceFileBackupPath # backup existing.  We can't ever add to the file with existing framework objects.
     try {
         # Get the next script nummber based on current scripts
@@ -258,7 +240,7 @@ if (TestScriptRelatedPaths) { # else error written to console
         ProcessAdHocDirectory
     }
     finally {
-        Write-Host "Deleting backup resource file." -ForegroundColor Blue
+        Write-Host "Deleting backup resource file." -ForegroundColor DarkGreen
         Remove-Item $global:ResourceFileBackupPath
     }
 }

@@ -76,7 +76,7 @@ Pre: GenerateDiffScript has run.
 #>
 function UpdateDatabaseStateDacPac {
     try {
-        Write-Host "Updating database state file [$global:SourceDacPath] -> [$global:TargetDacPath]." -ForegroundColor Blue
+        Write-Host "Updating database state file [$global:SourceDacPath] -> [$global:TargetDacPath]." -ForegroundColor DarkGreen
         [System.IO.File]::Delete($global:TargetDacPath) > $null
         # Copy from output dir to project location.
         [System.IO.File]::Copy($global:SourceDacPath, $global:TargetDacPath) > $null
@@ -93,11 +93,11 @@ To be called by developer who has updated the database project and wants to buil
 Pre: UpdateProject.scmp has been used to update the database project.  Previous database state lives in ./DatabaseState.dacpac
 #>
 function BuildDacpac {
-    Write-Host 'Building database project' -ForegroundColor Blue
+    Write-Host 'Building database project' -ForegroundColor DarkGreen
     try {
         # $dte.ExecuteCommand('Build.BuildSelection') won't work reliably; there is NO WAY to set the current project.
         # Update: now enforcing the user select the database project
-        #Write-Host "Building Database Project [$global:DatabaseProjectName] to [$global:BuildOutputDir] using [$global:MSBuildPath]" -ForegroundColor Blue
+        #Write-Host "Building Database Project [$global:DatabaseProjectName] to [$global:BuildOutputDir] using [$global:MSBuildPath]" -ForegroundColor DarkGreen
         #& $global:MSBuildPath /p:OutDir=$global:BuildOutputDir $ProjPath
   
         # Remove any existing dacpac so we can be assured to have the latest.  If build command fails (flaky), we want the diff script to fail.

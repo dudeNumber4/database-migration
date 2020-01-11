@@ -1,11 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SchemaComparison>
   <Version>10</Version>
-  <SourceModelProvider>
-    <ConnectionBasedModelProvider>
-      <ConnectionString>Data Source=LUSA02-02893\SQLEXPRESS;Initial Catalog=MigrationDatabase;Integrated Security=True;Persist Security Info=False;Pooling=False;MultipleActiveResultSets=False;Connect Timeout=60;Encrypt=False;TrustServerCertificate=False</ConnectionString>
-    </ConnectionBasedModelProvider>
-  </SourceModelProvider>
   <TargetModelProvider>
     <ProjectBasedModelProvider>
       <ProjectGuid>{72ad2d9a-c48a-468e-b326-9aa7cc3f2fbc}</ProjectGuid>
