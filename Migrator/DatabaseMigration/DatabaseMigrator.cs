@@ -128,7 +128,7 @@ namespace Migrator.DatabaseMigration
             void LogError() => _log.LogInfo($"Error executing script {scriptName}, see table {_journalTableStructure.TableName}");
             try
             {
-                _serverConnection.ConnectionContext.ExecuteNonQuery(script);
+                _serverConnection.ConnectionContext.ExecuteNonQuery(script, ExecutionTypes.ContinueOnError);
                 return true;
             }
             catch (ExecutionFailureException ex)
