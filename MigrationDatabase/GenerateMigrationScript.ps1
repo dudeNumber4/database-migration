@@ -90,38 +90,6 @@ function TestExecutablePaths {
 
 <#
 .DESCRIPTION
-To be called by developer who has updated the database project and wants to build a dacpac in prep for creating a diff script.
-Pre: UpdateProject.scmp has been used to update the database project.  Previous database state lives in ./DatabaseState.dacpac
-#>
-function BuildDacpac {
-    Write-Host 'Building database project' -ForegroundColor DarkGreen
-    try {
-        # $dte.ExecuteCommand('Build.BuildSelection') won't work reliably; there is NO WAY to set the current project.
-        # Update: now enforcing the user select the database project
-        #Write-Host "Building Database Project [$global:DatabaseProjectName] to [$global:BuildOutputDir] using [$global:MSBuildPath]" -ForegroundColor DarkGreen
-        #& $global:MSBuildPath /p:OutDir=$global:BuildOutputDir $ProjPath
-  
-        # Remove any existing dacpac so we can be assured to have the latest.  If build command fails (flaky), we want the diff script to fail.
-        if (Test-Path $global:SourceDacPath) { # "source": see GenerateDiffScript
-            Remove-Item $global:SourceDacPath
-            Start-Sleep -Milliseconds 50
-        }
-        # target path has already been set to what was the previous state of the database.
-
-        #$dte.ExecuteCommand('Build.BuildOnlyProject') # nope
-        # This is supposed to just build the selected project, but it seems to build all.  Sometimes?
-        $dte.ExecuteCommand('Build.BuildSelection')
-        # The above command is asynchronous.  The subsequent functions rely on the build having finished.  Sleep is easiest; small price to pay.
-        Start-Sleep -Seconds 5
-    }
-    catch {
-        Write-Host $_ -ForegroundColor Red
-        exit # Without this the script may keep going
-    }
-}
-
-<#
-.DESCRIPTION
 Uses sqlpackage to generate a diff script between 2 dacpacs.  This diff script will be applied on all other database instances
 To bring them to the state defined in ./DatabaseState.dacpac
 Pre: BuildDacpac has been called.  $SourceDacPath & $TargetDacPath have been set.
@@ -161,7 +129,18 @@ Load that file, add a comment telling the developer what to do with the new file
 function PrependCommentTo([string] $path) {
     try {
         Write-Host "Prepending comment to [$path]" -ForegroundColor DarkGreen
-        $comment = "/*           DEVELOPER!! README!!$([System.Environment]::NewLine)Review this script (does it drop a table unexpectedly?, etc.)$([System.Environment]::NewLine)If OK, close it and run CommitDatabaseScript.ps$([System.Environment]::NewLine)If the script doesn't look OK, delete this file.$([System.Environment]::NewLine)*/$([System.Environment]::NewLine)$([System.Environment]::NewLine)"
+
+        # This sucky ass powershell version or whatever won't allow a normal "here" (multiline) string.
+        $comment = '/*        ***   TEST THIS SCRIPT!!!  ***' + $([System.Environment]::NewLine) +
+        'Options for testing:' + $([System.Environment]::NewLine) +
+        '• If you took a backup of your database prior to making changes (very helpful - see ReadMe), you could restore that backup and test the script against it.' + $([System.Environment]::NewLine) +
+        '• You could (optionally) take a backup of your local database right now, manually revert the changes and test the script against that.' + $([System.Environment]::NewLine) +
+        '• You could restore a copy of the database from another server and test the script against that.' + $([System.Environment]::NewLine) +
+        '• You could ask a teammate who hasn''t made the changes to test it.' + $([System.Environment]::NewLine) +
+        '• You could commit the changes upon the agreement that a teammate will pull the latest changes, run the service and verify that the script ran (accepting that there is a possibility you may have to undo the recent changes - see ReadMe).' + $([System.Environment]::NewLine) +
+        '• If tests OK, save/close this file and run CommitDatabaseScript.ps' + $([System.Environment]::NewLine) +
+        '• If not, delete this file. */' + $([System.Environment]::NewLine) + $([System.Environment]::NewLine)
+
         $existingText = (Get-Content -Path $path -Delimiter '\0')
         (Set-Content -Path $path -Value "$comment$existingText")
     }

@@ -49,7 +49,8 @@ A (mostly) 2-part system for automating the propogation of database changes thro
     * Via database tooling, e.g., SSMS (caveat below).  If you use this method, transfer those changes to the database project using UpdateProject.scmp (launching it will show a UI for that purpose).  No need to save this file if prompted.
     * Via the database project scripts / objects.
   * Open package manager console, and run `./MigrationDatabase/GenerateMigrationScript.ps1`
-    * Review script that should pop up.  Note that the generated script will be verbose (lots of `print` statements and comments); it's fine to delete all but what you really need (or add comments).
+    * Review script that should pop up: READ THE WARNING ABOUT HOW TO TEST THE SCRIPT!!
+    * Note that the generated script will be verbose (lots of `print` statements and comments); it's fine to delete all but what you really need (or add comments).
   * Run `./MigrationDatabase/CommitDatabaseScripts.ps1`.  This "commits" the change to resource file [DatabaseMigrationScripts.resources].
   * Commit changes to source.
   * Note that if you have already made the changes to your local database, the script will fail.  This is expected; if you made the changes _only_ in the database project, you do want them applied locally.  If the script fails, it won't be attempted again.
@@ -67,11 +68,7 @@ A (mostly) 2-part system for automating the propogation of database changes thro
   * The scripts you commit will execute _in order_ when promoted to other environments.  If order matters, e.g., you create a table and also add a script to populate that table, they must be committed in the proper order.  You can commit a migration script and an ad-hoc script at the same time (and the output will report in which order they were added), but in this case it's better to commit the create table script first, then commit the ad-hoc populate script.
 * Testing
   * Sometimes the generated script will fail on other instances, e.g., you added a non-nullable column and the script will try to move data from the existing table into the new one without explicitly providing a value for the new non-nullable column.
-  * Options for testing:
-    * If you took a backup of your database prior to making changes (third bullet in this section), you could restore that backup and test the script against it.
-    * You could take a backup of your database right now, manually revert the changes and test the script against that.
-    * You could restore a copy of the database from another server and test the script against that.
-    * You could ask a teammate who hasn't made the changes to test it.
+  * If you add an Ad-Hoc script, it's assumed you've tested it.  If you generated a script, ensure to follow the advice/instructions about testing it that appear in the script.
 
 ##### Errors
 * Startup.log in the same directory as the service will contain error indications and skipped (if already applied or attempted) scripts.

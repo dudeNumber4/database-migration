@@ -72,7 +72,6 @@ function EnsureExpectedDirectoriesExist {
 <#
 .DESCRIPTION
 Takes the latest build from BuildDacPac and overwrites ./DatabaseState.dacpac with that.
-Pre: GenerateDiffScript has run.
 #>
 function UpdateDatabaseStateDacPac {
     try {
@@ -89,7 +88,7 @@ function UpdateDatabaseStateDacPac {
 
 <#
 .DESCRIPTION
-To be called by developer who has updated the database project and wants to build a dacpac in prep for creating a diff script.
+To be called by developer who has updated the database project and wants to build a dacpac in prep for creating a diff script, or any time we want the dacpac state to be updated.
 Pre: UpdateProject.scmp has been used to update the database project.  Previous database state lives in ./DatabaseState.dacpac
 #>
 function BuildDacpac {
@@ -111,7 +110,7 @@ function BuildDacpac {
         # This is supposed to just build the selected project, but it seems to build all.  Sometimes?
         $dte.ExecuteCommand('Build.BuildSelection')
         # The above command is asynchronous.  The subsequent functions rely on the build having finished.  Sleep is easiest; small price to pay.
-        Start-Sleep -Seconds 5
+        Start-Sleep -Seconds 6
     }
     catch {
         Write-Host $_ -ForegroundColor Red
@@ -123,4 +122,3 @@ function BuildDacpac {
 function GetResourceReader([string] $path) {
     New-Object System.Resources.ResourceReader -ArgumentList $path
 }
-
