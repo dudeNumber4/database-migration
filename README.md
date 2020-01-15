@@ -46,7 +46,12 @@ A (mostly) 2-part system for automating the propogation of database changes thro
   * If you have a task that will make table changes (especially if multiple), it's best to take a backup of your local database in it's pre-changed state.  It's not absolutely necessary, but it can be very helpful if you want to test the generated script before committing it.
   * Make database changes using any method.
     * Via application code.  Note that it's not a good idea to have code _recreate_ database objects since database objects may have changes applied to them subsequent to creation, e.g., an index was added.  If they differ, then the database state will diverge from what's in the database project which is the source of truth for database objects.
-    * Via database tooling, e.g., SSMS (caveat below).  If you use this method, transfer those changes to the database project using UpdateProject.scmp (launching it will show a UI for that purpose).  No need to save this file if prompted.
+    * Via database tooling, e.g., SSMS (caveat below).
+      * If you use this method, transfer those changes to the database project using UpdateProject.scmp.
+      * Launching UpdateProject.scmp, ensure the database is the selected item at top left; project is selected at top right.
+      * Click compare.  Look at the differences, they should just include your recent changes.
+      * Click "Update" to transfer the changes to the database project.
+      * No need to save this file when closing it.
     * Via the database project scripts / objects.
   * Open package manager console, and run `./MigrationDatabase/GenerateMigrationScript.ps1`
     * Review script that should pop up: READ THE WARNING ABOUT HOW TO TEST THE SCRIPT!!
