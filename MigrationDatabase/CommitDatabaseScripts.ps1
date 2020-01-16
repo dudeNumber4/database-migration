@@ -199,10 +199,6 @@ Process $global:AdHocScriptPath
 Add scripts found there to known resource file.
 #>
 function ProcessAdHocDirectory {
-    # User may have made a change and then just decided to write their own script for it.  If they called GenerateMigrationScript, a build will have been done.  If not, this will be the current build.
-    # Either way, it doesn't hurt.
-    # In either case, this script will update the dacpac state.
-    BuildDacpac
     Write-Host "Processing scripts in $global:AdHocScriptPath" -ForegroundColor DarkGreen
     try {
         Get-Childitem -Path $global:AdHocScriptPath | ForEach-Object {
@@ -243,6 +239,9 @@ if (TestScriptRelatedPaths) { # else error written to console
         ProcessAdHocDirectory
     }
     finally {
+	    # User may have made a change and then just decided to write their own ad-hoc script for it.  If they called GenerateMigrationScript, a build will have been done.  If not, this will be the current build.
+	    # Either way, it doesn't hurt.
+	    # In either case, this script will update the dacpac state to current database project state.
         BuildDacpac
         Write-Host "Deleting backup resource file." -ForegroundColor DarkGreen
         Remove-Item $global:ResourceFileBackupPath
