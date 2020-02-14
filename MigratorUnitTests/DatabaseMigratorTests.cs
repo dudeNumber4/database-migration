@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
-using Migrator.DatabaseMigration;
+using DatabaseMigrator;
 using NSubstitute;
 using System;
 using System.Data.SqlClient;
@@ -14,7 +14,7 @@ namespace MigratorUnitTests
     public class DatabaseMigratorTests: IDisposable
     {
 
-        private DatabaseMigrator _databaseMigrator;
+        private DatabaseMigrator.DatabaseMigrator _databaseMigrator;
         private IConfigurationRoot _config;
         private string _connectionString;
 
@@ -43,7 +43,7 @@ namespace MigratorUnitTests
 
         private void SetMigratorSubstitute()
         {
-            _databaseMigrator = Substitute.For<DatabaseMigrator>(TestLogger.Instance());
+            _databaseMigrator = Substitute.For<DatabaseMigrator.DatabaseMigrator>(TestLogger.Instance());
 
             // Return a script that simply creates a table.  Give it a high number/key so as to not clash with any existing scripts.  Yes, the test has way too much knowledge of the innards.
             _databaseMigrator.GetResources().Returns(Enumerable.Repeat((DatabaseMigratorTestScripts.TestScriptName, DatabaseMigratorTestScripts.CreateTableScript), 1));

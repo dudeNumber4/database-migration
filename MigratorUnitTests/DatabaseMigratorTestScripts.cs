@@ -1,4 +1,4 @@
-using Migrator.DatabaseMigration;
+using DatabaseMigrator;
 using System;
 using System.Collections.Generic;
 using System.Text;

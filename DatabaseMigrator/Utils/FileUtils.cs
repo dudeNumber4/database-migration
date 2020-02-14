@@ -1,10 +1,10 @@
-using Migrator.DatabaseMigration.Utils;
+using DatabaseMigrator.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace Migrator.DatabaseMigration.Utils
+namespace DatabaseMigrator.Utils
 {
 
     /// <summary>

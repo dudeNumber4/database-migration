@@ -7,12 +7,13 @@ A (mostly) 2-part system for automating the propogation of database changes thro
   * Database compare: UpdateProject.scmp
   * Assumes directories "Scripts" and their 2 subdirectories exist.
   * DatabaseState.dacpac: A file that maintains the current database state.
-* Service: A C# project that processes the scripts.
+* DatabaseMigrator: A C# project that processes the scripts.
   * DatabaseMigrator.cs: entry point.
   * DatabaseMigrationScripts.resources: A resource file that contains the scripts that originated in the database project.
+* Service: A sample service that utilizes DatabaseMigrator
 
 ### Dependencies
-1. sqlpackage.exe: Data Tools must be installed.
+1. sqlpackage.exe: Sql Server Data Tools must be installed.
 2. Visual Studio: The powershell scripts will only work from VS package manager console (see the scripts for details).
 3. Sql Server.  DatabaseMigrator.cs (in Service) assumes Sql Server, but could probably be easily modified.
 
@@ -43,30 +44,32 @@ A (mostly) 2-part system for automating the propogation of database changes thro
 #### Usage
 * It never hurts to run UpdateProject.scmp prior to making changes just to sanity-check that your local database matches what's in the database project.  This will ensure that `GenerateMigrationScript` below will generate the proper change script.
 * Schema Changes
-  * If you have a task that will make table changes (especially if multiple), it's best to take a backup of your local database in it's pre-changed state.  It's not absolutely necessary, but it can be very helpful if you want to test the generated script before committing it.
-  * Make database changes using any method.
-    * Via application code.  Note that it's not a good idea to have code _recreate_ database objects since database objects may have changes applied to them subsequent to creation, e.g., an index was added.  If they differ, then the database state will diverge from what's in the database project which is the source of truth for database objects.
-    * Via database tooling, e.g., SSMS (caveat below).
-      * If you use this method, transfer those changes to the database project using UpdateProject.scmp.
-      * Launching UpdateProject.scmp, ensure the database is the selected item at top left; project is selected at top right.
-      * Click compare.  Look at the differences, they should just include your recent changes.
-      * Click "Update" to transfer the changes to the database project.
-      * No need to save this file when closing it.
-    * Via the database project scripts / objects.
-  * Open package manager console, and run `./MigrationDatabase/GenerateMigrationScript.ps1`
-    * Review script that should pop up: READ THE WARNING ABOUT HOW TO TEST THE SCRIPT!!
-    * Note that the generated script will be verbose (lots of `print` statements and comments); it's fine to delete all but what you really need (or add comments).
-  * Run `./MigrationDatabase/CommitDatabaseScripts.ps1`.  This "commits" the change to resource file [DatabaseMigrationScripts.resources].
-  * Commit changes to source.
-  * Note that if you have already made the changes to your local database, the script will fail.  This is expected; if you made the changes _only_ in the database project, you do want them applied locally.  If the script fails, it won't be attempted again.
+  * Letting the system generate your script:
+  * Note: If you are familiar with TSQL DDL, you have a simple database change, and you know what script will be required for the change, see Ad-Hoc section below.
+    * If you have a task that will make table changes (especially if multiple), it's best to take a backup of your local database in it's pre-changed state.  It's not absolutely necessary, but it can be very helpful if you want to test the generated script before committing it.
+    * Make database changes using any method.
+      * Via application code.  Note that it's not a good idea to have code _recreate_ database objects since database objects may have changes applied to them subsequent to creation, e.g., an index was added.  If they differ, then the database state will diverge from what's in the database project which is the source of truth for database objects.
+      * Via database tooling, e.g., SSMS (caveat below).
+        * If you use this method, transfer those changes to the database project using UpdateProject.scmp.
+        * Launching UpdateProject.scmp, ensure the database is the selected item at top left; project is selected at top right.
+        * Click compare.  Look at the differences, they should just include your recent changes.
+        * Click "Update" to transfer the changes to the database project.
+        * No need to save this file when closing it.
+      * Via the database project scripts / objects.
+    * Open package manager console, and run `./MigrationDatabase/GenerateMigrationScript.ps1`
+      * Review script that should pop up: READ THE WARNING ABOUT HOW TO TEST THE SCRIPT!!
+      * Note that the generated script will be verbose (lots of `print` statements and comments); it's fine to delete all but what you really need (or add comments).
+    * Run `./MigrationDatabase/CommitDatabaseScripts.ps1`.  This "commits" the change to resource file [DatabaseMigrationScripts.resources].
+    * Commit changes to source.
+    * Note that if you have already made the changes to your local database, the script will fail.  This is expected; if you made the changes _only_ in the database project, you do want them applied locally.  If the script fails, it won't be attempted again.
 * Ad-Hoc Scripts
-  * Add either way:
-    * Right click on AdHoc folder in the database project; add new database script.
-    * Write the script elsewhere and manually copy it into that directory.
-  * If adding directly to AdHoc folder, your script will assume database context (intellisense on database objects, etc.).
+  * Add an ad-hoc script by right clicking on AdHoc folder in the database project -> add -> new database script (file name makes no difference).
+  * Your script will assume database context (intellisense on database objects, etc.).
   * Don't execute the script; system assumes these are to be executed via the Service.
+    * Note that it's a good idea to make ad-hoc scripts idempotent, e.g., `drop object if exists`.  This way, the script will never record an error.
   * Run `./MigrationDatabase/CommitDatabaseScripts.ps1`
-  * Run Service (you could do this step after the next or even after pushing changes, but if there was an issue with the script and you didn't fix it, other instances will experience that issue).  To revert what has already been committed to the resource file, the process is basically the same as what is in section "Merge Conflicts."
+    * If you added a script that makes schema changes (you preferred to write your own rather than let the system generate one), ensure you make the corresponding update to the database project so the overall database state is correct.
+  * Run Service (you could do this step after the next or even after pushing changes, but if there was an issue with the script and you didn't fix it, other instances will experience that issue).  To revert what has already been committed to the resource file, undo changes to DatabaseMigrationScripts.resources.
   * Commit (to source control) changes; script will now live in DatabaseMigrationScripts.resources.
 * Other instances of your Service that hit other database instances will execute scripts that bring that database instance up to the current state.
 * Script Execution Order
@@ -96,6 +99,8 @@ A (mostly) 2-part system for automating the propogation of database changes thro
 
 ##### Viewing / Modifying scripts in the resource
 * To simply view the scripts in the resource, run `./MigrationDatabase/ExtractResourceScripts.ps1`.  The scripts will reside in a database table.  See notes in Errors section about properly viewing them.
+  * To see the most recent scripts, run `select top 2 * from ResourceScripts order by id desc`
+* To see the most recent scripts, run `select top 2 * from ResourceScripts order by id desc`
 * To modify the scripts in the resource for whatever reason:
   * Open visual studio developer command prompt.
   * `resgen ServiceProject/DatabaseMigrationScripts.resources ServiceProject/DatabaseMigrationScripts.resx`
@@ -107,13 +112,18 @@ A (mostly) 2-part system for automating the propogation of database changes thro
 * In any case, if you're sure that you want to set the current state to match what is in the database project, run script `./MigrationDatabase/UpdateDatabaseState.ps1` to do so.
 
 ##### Merge Conflicts
-* Merge conflicts (another team member merged database changes before yours) are non-resolvable.  In this event, you will have to re-do your changes:
-  1. Your changes should be present in your local database because you've tested them.  So I'll make that assumption.
-  2. Undo changes on the following:
-     1. In the database project (unless the only change you made was to add an ad-hoc script).
-     2. DatabaseMigrationScripts.resources
-     3. DatabaseState.dacpac (part of the database project).
-  3. Follow instructions under main "Usage" section above.  Don't forget to re-do the step to transfer database changes to the database project via UpdateProject.scmp if necessary.
+* Merge conflicts (another team member merged database changes before yours) are sometimes non-resolvable.  In this event, you will have to manually merge scripts.  This assumes you have aborted a merge:
+  1. See section "Viewing / Modifying scripts in the resource" above.  Run the `resgen` command described.
+  2. Open the .resx file in visual studio, identify the script(s) you have added.  If it's difficult to find the one you added, you can follow the first two bullet points in the "viewing" section to quickly identify your script id/number.  Once you know that, you can find your script number in the .resx file.  Note that you can actually search the .resx while open.
+  3. Copy your script (and it's number) somewhere separately.  Copy the .resx file outside the repo somewhere.
+  4. Switch to the branch you need to merge with.
+  5. Follow the same steps to copy out the other branch's script(s) and their numbers.
+  6. Examine the scripts; ensure they won't clobber one another.
+  7. Switch back to your branch.  Open the .resx file you saved separately.
+  8. Add/update the scripts to the .resx with proper numbers.  Ex: both scripts were committed as script #15.  One must assume #15, the other #16.  Note that they will be executed in that order.
+  9. Run the `resgen` command to convert the .resx back to .resources.
+  10. Commit this new version of .resources to your branch.
+  11. Now you should be able to merge the other branch in without conflicts.  In any case, if there is a conflict, choose the version on your branch.
 
 ##### Revert Changes Already Committed to Source
 * This should be _very rare_.

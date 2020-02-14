@@ -1,5 +1,5 @@
 using FluentAssertions;
-using Migrator.DatabaseMigration.Utils;
+using DatabaseMigrator.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;

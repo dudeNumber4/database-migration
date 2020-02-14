@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Migrator.DatabaseMigration.Utils
+namespace DatabaseMigrator.Utils
 {
 
     public interface IStartupLogger

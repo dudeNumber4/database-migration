@@ -1,4 +1,4 @@
-using Migrator.DatabaseMigration.Utils;
+using DatabaseMigrator.Utils;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-namespace Migrator.DatabaseMigration
+namespace DatabaseMigrator
 {
 
     [SuppressMessage("Dispose", "CA1063", Justification = "Dispose WILL NOT WORK any other way")]

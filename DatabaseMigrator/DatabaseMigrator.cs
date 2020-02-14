@@ -9,9 +9,9 @@ using System.Reflection;
 using System.Resources;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
-using Migrator.DatabaseMigration.Utils;
+using DatabaseMigrator.Utils;
 
-namespace Migrator.DatabaseMigration
+namespace DatabaseMigrator
 {
 
     public interface IDatabaseMigrator
@@ -34,7 +34,7 @@ namespace Migrator.DatabaseMigration
         /// Resource file copied to output.
         /// This could be the more readable .resx file, but .Net core has made dealing with those a flat-out nightmare.  See ReadMe in database project for more.
         /// </summary>
-        private string _resourceFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), nameof(DatabaseMigration), "DatabaseMigrationScripts.resources");
+        private string _resourceFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "DatabaseMigrationScripts.resources");
         private Server _serverConnection;
 
         public DatabaseMigrator(IStartupLogger log)

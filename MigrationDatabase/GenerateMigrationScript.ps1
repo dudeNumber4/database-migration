@@ -133,12 +133,13 @@ function PrependCommentTo([string] $path) {
         # This sucky ass powershell version or whatever won't allow a normal "here" (multiline) string.
         $comment = '/*        ***   TEST THIS SCRIPT!!!  ***' + $([System.Environment]::NewLine) +
         'Options for testing:' + $([System.Environment]::NewLine) +
+        '• If you changed only the database project, remove these comments, save, run CommitDatabaseScript.ps, run the service locally to execute this script, run tests, etc.' + $([System.Environment]::NewLine) +
         '• If you took a backup of your database prior to making changes (very helpful - see ReadMe), you could restore that backup and test the script against it.' + $([System.Environment]::NewLine) +
         '• You could (optionally) take a backup of your local database right now, manually revert the changes and test the script against that.' + $([System.Environment]::NewLine) +
         '• You could restore a copy of the database from another server and test the script against that.' + $([System.Environment]::NewLine) +
         '• You could ask a teammate who hasn''t made the changes to test it.' + $([System.Environment]::NewLine) +
         '• You could commit the changes upon the agreement that a teammate will pull the latest changes, run the service and verify that the script ran (accepting that there is a possibility you may have to undo the recent changes - see ReadMe).' + $([System.Environment]::NewLine) +
-        '• If tests OK, save/close this file and run CommitDatabaseScript.ps' + $([System.Environment]::NewLine) +
+        '• If all OK, (optionally remove these comments), save/close this file and run CommitDatabaseScript.ps.  If you are prompted by visual studio telling you that the file encoding has changed (which can happen if you copy/paste into another format); DO NOT SAVE.' + $([System.Environment]::NewLine) +
         '• If not, delete this file. */' + $([System.Environment]::NewLine) + $([System.Environment]::NewLine)
 
         $existingText = (Get-Content -Path $path -Delimiter '\0')

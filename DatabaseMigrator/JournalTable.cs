@@ -6,10 +6,10 @@ using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Transactions;
-using Migrator.DatabaseMigration.Utils;
+using DatabaseMigrator.Utils;
 using IsolationLevel = System.Data.IsolationLevel;
 
-namespace Migrator.DatabaseMigration
+namespace DatabaseMigrator
 {
 
     /// <summary>
