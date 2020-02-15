@@ -6,14 +6,13 @@ Configures the repo for database migrator usage.
   * deploy-database-git-scripts.ps1 sitting in the root of the repo configures the other components.
   * Configures the following components.
 * Merge Driver
-  * ResolveScriptResourceDifferences.ps1
-  * Called by database-resource-merge-driver.sh
-  * Referenced by .gitattributes when a conflict occurrs for *.resource
   * Configured as a merge driver in the main config file.
+  * .gitattributes tells which merge driver to call when a conflict occurs for .resource files
+  * ResolveScriptResourceDifferences.ps1 (called by merge driver)
 * Create Branch Hook
   * .git/hooks/post-checkout
   * Fires when (most) new branches are created.
-  * CreateBranchHook.ps - called by the hook.
+  * CreateBranchHook.ps1 - called by the hook.
   * Searches for MSBuild and a database project in the repo.  If found, builds the database project and stored the output in the database project root.
   * This is used by the GenerateMigrationScript to compare the state of the database at the beginning of the branch to current state.
 
@@ -183,21 +182,19 @@ Configures the repo for database migrator usage.
 		§ Halt; missing foundational script.
 ```
 
-### Deploy Script Tests
+### Deploy Script (deploy-database-git-scripts.ps1) Tests
 ```
 • Setup
-	○ Set-Location to root of repo where testing
 	○ config contains a chunk of some type (grab from some other repo)
 	○ No .gitattributes file exists
-	○ No database-resource-merge-driver.sh
 	○ No ResolveScriptResourceDifferences.ps1
 	○ No .git/hooks/post-checkout
 • Run and check
 	○ config contains 2 chunks (what was already present above and the new one for the merge driver)
 	○ .gitattributes contains the one line
-	○ database-resource-merge-driver.sh contains proper contents (see the deploy script for contents)
 	○ ResolveScriptResourceDifferences.ps1 contains proper contents
 	○ .git/hooks/post-checkout contains proper contents
+	○ CreateBranchHook.ps1 contains proper contents
 • Run again
 	○ Check all of above again
 ```

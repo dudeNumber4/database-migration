@@ -2,17 +2,17 @@ function GetResourceReader([string] $path) {
     New-Object System.Resources.ResourceReader -ArgumentList $path
 }
 
-function GetResourceWriter {
-    New-Object System.Resources.ResourceWriter -ArgumentList $outputPath
+function GetResourceWriter([string] $path) {
+    New-Object System.Resources.ResourceWriter -ArgumentList $path
 }
 
 # iterate files in $inputPath, write them all into resource file at $outputPath using file names as keys
 # Theh output file can't be in the same dir as input
 function WriteFilesToResource($inputPath, $outputPath) {
-    $writer = GetResourceWriter
+    $writer = GetResourceWriter $outputPath
 
     try {
-        Get-ChildItem $inputPath -File | ForEach-Object {
+        Get-ChildItem $inputPath -File | Where-Object {$null -ne $_} | ForEach-Object {
             $content = Get-Content $_
             $writer.AddResource($_.Name, $content)
         }
@@ -41,7 +41,7 @@ function SetLocationToRepoRoot {
 
 $tempFileDir = 'C:\temp\DatabaseMigration\ResourceInputFiles'
 SetLocationToRepoRoot
-$resourceFilePath = './DatabaseMigrator/DatabaseMigrationScripts.resources'
+$resourceFilePath = 'C:\source\database-migration\DatabaseMigrator\DatabaseMigrationScripts.resources'
 
 Write-Host "$([System.Environment]::NewLine)Setting content for master.$([System.Environment]::NewLine)"
 Set-Location $tempFileDir

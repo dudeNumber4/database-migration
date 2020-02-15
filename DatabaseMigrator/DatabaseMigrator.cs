@@ -125,7 +125,6 @@ namespace DatabaseMigrator
         private bool ExecuteScript(string scriptName, string script)
         {
             AssertOpenConnection();
-            void LogError() => _log.LogInfo($"Error executing script {scriptName}, see table {_journalTableStructure.TableName}");
             try
             {
                 _serverConnection.ConnectionContext.ExecuteNonQuery(script, ExecutionTypes.ContinueOnError);
@@ -133,13 +132,11 @@ namespace DatabaseMigrator
             }
             catch (ExecutionFailureException ex)
             {
-                LogError();
                 _failedScripts.Add(scriptName, $"{ex.Message} {ex.InnerException.Message}");
                 return false;
             }
             catch (SqlException e)
             {
-                LogError();
                 _failedScripts.Add(scriptName, e.Message);
                 return false;
             }

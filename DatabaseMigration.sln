@@ -9,7 +9,7 @@ Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "MigrationDatabase", "Migrat
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MigratorUnitTests", "MigratorUnitTests\MigratorUnitTests.csproj", "{A951D8C3-9083-4DB2-876E-63A4A03F179F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseMigrator", "DatabaseMigrator\DatabaseMigrator.csproj", "{A6C576AF-0A79-4378-A85F-1E98DBC7EEAF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DatabaseMigrator", "DatabaseMigrator\DatabaseMigrator.csproj", "{A6C576AF-0A79-4378-A85F-1E98DBC7EEAF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
