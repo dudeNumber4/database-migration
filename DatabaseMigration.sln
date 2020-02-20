@@ -9,7 +9,7 @@ Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "MigrationDatabase", "Migrat
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MigratorUnitTests", "MigratorUnitTests\MigratorUnitTests.csproj", "{A951D8C3-9083-4DB2-876E-63A4A03F179F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DatabaseMigrator", "DatabaseMigrator\DatabaseMigrator.csproj", "{A6C576AF-0A79-4378-A85F-1E98DBC7EEAF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DatabaseMigration", "DatabaseMigration\DatabaseMigration.csproj", "{52DB79DD-7634-449B-A2E4-542D68A18B9A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,10 +31,10 @@ Global
 		{A951D8C3-9083-4DB2-876E-63A4A03F179F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A951D8C3-9083-4DB2-876E-63A4A03F179F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A951D8C3-9083-4DB2-876E-63A4A03F179F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A6C576AF-0A79-4378-A85F-1E98DBC7EEAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A6C576AF-0A79-4378-A85F-1E98DBC7EEAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A6C576AF-0A79-4378-A85F-1E98DBC7EEAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A6C576AF-0A79-4378-A85F-1E98DBC7EEAF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52DB79DD-7634-449B-A2E4-542D68A18B9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52DB79DD-7634-449B-A2E4-542D68A18B9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52DB79DD-7634-449B-A2E4-542D68A18B9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52DB79DD-7634-449B-A2E4-542D68A18B9A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

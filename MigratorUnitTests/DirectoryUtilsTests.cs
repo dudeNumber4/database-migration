@@ -1,4 +1,4 @@
-using DatabaseMigrator.Utils;
+using DatabaseMigration.Utils;
 using FluentAssertions;
 using System;
 using System.IO;

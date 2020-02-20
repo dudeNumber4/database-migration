@@ -21,24 +21,32 @@ A system for automating the propogation of database changes throughout all dev/s
 5. Powershell v6 (core) or greater.  To ensure it's installed correctly, open a git bash shell and type `where pwsh`.  If it can't be found; find where it's installed and ensure that's on your path.
 
 #### Initial Configuration (i.e., what the nuget package that doesn't yet exist should do)
-* Add a database project to your solution, then add all the components of this database project except the actual dbo folder (with one exception below).
+* Add a database project to your solution.
   * Note that the database name is, by default, the same as the project.  This could probably be detected by the scripts, but is not currently the case; it assumes they are the same.
-  * As such, rename the database project to match your database name.
+  * As such, name the database project to match your database name.  If you don't already have a database, create on with the same name as your database project.
     * The database name must be consistent across all environments.  I think this is a good thing.
+  * Add all .ps1 and psm1 scripts from the root of this `MigrationDatabase` project to the root of your database project.
+  * Add folders Scripts/AdHoc and Scripts/Migrations to your database project.
+  * Copy `UpdateProject.scmp` from this `MigrationDatabase` to your database project.
+  * If you don't already have a database add default dbo schema to your database project.
   * In your solution configuration, remove the database project from the build; it will never need to be part of the normal build process and will fail if called from .net core CLI.
-* Set the current state of your database:
+  * Add a table named MigrationsJournal to your database project.  Set it's (text) definition to this project's table of that name.
+* Set the current state of your database project:
    * Using `UpdateProject.scmp`:
      * Open the file, set the left side to point to your database; right side (target) to your database project.  NOTE: reference your local server as '.', not with your machine name.  This so your teammates can use the compare file as is - it will persist.
      * Hit compare.
      * Update your database project.
      * Close it, saving changes/settings.
-* Add the `MigrationsJournal.sql` file (in dbo folder) to your database project's dbo (or explicitly named schema if you have one) folder.  After the first time you run your service, this table will be in your database.
-* Reference "DatabaseMigrator" from your Service.
+* Copy the `DatabaseMigration` project into your solution.
+* Reference `DatabaseMigration` from your Service.
   * Set the build action property of DatabaseMigrationScripts.resources to "Content," "Copy Always."
 * Search the solution for ":Configure:" and change where necessary.
-* Open a powershell console and run `deploy-database-git-scripts.ps1`
+* Copy `deploy-database-git-scripts.ps1` to the root of your repo.  Open a powershell console and run it: `. ./deploy-database-git-scripts.ps1`
+  * [missing from above script for now] Add these file types to your .gitignore: *.dbmdl, *.jfm, *.refactorlog, *.dacpac
 * In .bash_profile or .bashrc add `export GIT_MERGE_AUTOEDIT=no`
   * Otherwise you'll get a *halting* message upon _properly resolved_ merge conflicts.  I don't understand why git does this; it just seems wrong to me.
+* Somewhere in your service startup, call DatabaseMigrator.PerformMigrations.
+* Run your service; ensure table MigrationsJournal has been added to your database.
 
 #### Usage
 * It never hurts to run UpdateProject.scmp prior to making changes just to sanity-check that your local database matches what's in the database project.  This will ensure that `databaseState.dacpac` (that should've been created upon creating a new branch -see section "Database State") has the correct state.

@@ -1,10 +1,9 @@
-using DatabaseMigrator.Utils;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 
-namespace DatabaseMigrator.Utils
+namespace DatabaseMigration.Utils
 {
 
     /// <summary>

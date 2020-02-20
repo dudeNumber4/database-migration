@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DatabaseMigrator\DatabaseMigrator.csproj" />
+    <ProjectReference Include="..\DatabaseMigration\DatabaseMigration.csproj" />
   </ItemGroup>
 
 </Project>

@@ -9,9 +9,9 @@ using System.Reflection;
 using System.Resources;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
-using DatabaseMigrator.Utils;
+using DatabaseMigration.Utils;
 
-namespace DatabaseMigrator
+namespace DatabaseMigration
 {
 
     public interface IDatabaseMigrator

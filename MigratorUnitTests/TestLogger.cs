@@ -3,7 +3,7 @@ using System;
 using System.Linq;
 using System.Diagnostics;
 using System.Text;
-using DatabaseMigrator.Utils;
+using DatabaseMigration.Utils;
 
 namespace MigratorUnitTests
 {
