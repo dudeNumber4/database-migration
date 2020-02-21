@@ -10,6 +10,18 @@ $MergeDriverConfigEntry = @'
 # This entry tells git which file type our merge driver works on.
 $GitAttributesPath = './.gitattributes'
 $GitAttributesContent = '*.resources merge=database-resource-script-merge-driver'
+
+# Add to gitignore database project files
+$GitIgnorePath = './.gitignore'
+$GitIgnoreContent = @'
+# database project files
+*.dbmdl
+*.jfm
+*.refactorlog
+*.dacpac
+
+'@
+
 # The script referenced by the merge driver
 $MergeDriverPath = './ResolveScriptResourceDifferences.ps1'
 $MergeDriverContents = @'
@@ -481,6 +493,7 @@ AddBranchHook
 
 AddConfigFileEntry $GitConfigPath $MergeDriverConfigEntry
 AddConfigFileEntry $GitAttributesPath $GitAttributesContent
+AddConfigFileEntry $GitIgnorePath $GitIgnoreContent
 
 # Write out script
 Set-Content -Path $MergeDriverPath $MergeDriverContents

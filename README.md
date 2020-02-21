@@ -42,7 +42,6 @@ A system for automating the propogation of database changes throughout all dev/s
   * Set the build action property of DatabaseMigrationScripts.resources to "Content," "Copy Always."
 * Search the solution for ":Configure:" and change where necessary.
 * Copy `deploy-database-git-scripts.ps1` to the root of your repo.  Open a powershell console and run it: `. ./deploy-database-git-scripts.ps1`
-  * [missing from above script for now] Add these file types to your .gitignore: *.dbmdl, *.jfm, *.refactorlog, *.dacpac
 * In .bash_profile or .bashrc add `export GIT_MERGE_AUTOEDIT=no`
   * Otherwise you'll get a *halting* message upon _properly resolved_ merge conflicts.  I don't understand why git does this; it just seems wrong to me.
 * Somewhere in your service startup, call DatabaseMigrator.PerformMigrations.
