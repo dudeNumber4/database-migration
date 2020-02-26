@@ -44,6 +44,7 @@ A system for automating the propogation of database changes throughout all dev/s
 * Copy `deploy-database-git-scripts.ps1` to the root of your repo.  Open a powershell console and run it: `. ./deploy-database-git-scripts.ps1`
 * In .bash_profile or .bashrc add `export GIT_MERGE_AUTOEDIT=no`
   * Otherwise you'll get a *halting* message upon _properly resolved_ merge conflicts.  I don't understand why git does this; it just seems wrong to me.
+  * To create .bashrc on windows, follow first 2 steps here: https://superuser.com/a/602896/15507
 * Somewhere in your service startup, call DatabaseMigrator.PerformMigrations.
 * Run your service; ensure table MigrationsJournal has been added to your database.
 
