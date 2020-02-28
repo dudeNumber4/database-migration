@@ -12,7 +12,7 @@ namespace DatabaseMigration.Utils
     }
 
     /// <summary>
-    /// :Configure: plug in your logger.
+    /// :Configure: plug in your logger / implement this interface.  It's passed into <see cref="DatabaseMigrator"/>
     /// </summary>
     public class ConsoleStartupLogger : IStartupLogger
     {

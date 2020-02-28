@@ -47,6 +47,7 @@ A system for automating the propogation of database changes throughout all dev/s
   * To create .bashrc on windows, follow first 2 steps here: https://superuser.com/a/602896/15507
 * Somewhere in your service startup, call DatabaseMigrator.PerformMigrations.
 * Run your service; ensure table MigrationsJournal has been added to your database.
+* Copy this ReadMe into your database project.  Search / Replace "MigrationDatabase" below this point and change to your database project name.
 
 #### Usage
 * It never hurts to run UpdateProject.scmp prior to making changes just to sanity-check that your local database matches what's in the database project.  This will ensure that `databaseState.dacpac` (that should've been created upon creating a new branch -see section "Database State") has the correct state.
