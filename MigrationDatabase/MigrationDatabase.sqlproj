@@ -71,7 +71,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="UpdateProject.scmp" />
-    <None Include="DatabaseState.dacpac" />
     <None Include="Common.psm1" />
     <None Include="ExtractResourceScripts.ps1" />
     <None Include="GenerateMigrationScript.ps1" />
