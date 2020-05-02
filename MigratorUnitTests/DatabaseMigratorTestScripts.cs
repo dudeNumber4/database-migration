@@ -20,14 +20,13 @@ namespace MigratorUnitTests
         public static string CreateTableScript => string.Format(CREATE_TABLE, nameof(DatabaseMigratorTests));
         // cleanup scripts
         public static string DropTableScript => string.Format(DROP_TABLE, nameof(DatabaseMigratorTests));
-        public static string DeleteJournalRecordScript => string.Format(DELETE_JOURNAL_RECORD, _journalTableStructure.TableName, _journalTableStructure.NameColumn, TestScriptName);
+        public static string DeleteJournalRecordScript => string.Format(DELETE_JOURNAL_RECORD, _journalTableStructure.TableName, _journalTableStructure.NumberColumn, TestScriptNumber);
         // script to check that test script ran
         public static string TableExistsScript => string.Format(TABLE_EXISTS, nameof(DatabaseMigratorTests));
         // script that simulates another service instance already started/running our script.
-        public static string SimulateOtherServiceScript => string.Format(SIMULATE_OTHER_SERVICE, _journalTableStructure.TableName, _journalTableStructure.NameColumn, _journalTableStructure.BegunColumn, _journalTableStructure.CompletedColumn, TestScriptName);
+        public static string SimulateOtherServiceScript => string.Format(SIMULATE_OTHER_SERVICE, _journalTableStructure.TableName, _journalTableStructure.NumberColumn, _journalTableStructure.BegunColumn, _journalTableStructure.CompletedColumn, TestScriptNumber);
 
-        public static string TestScriptName => Int32.MaxValue.ToString();
-        public static string JournalTableExistsScript => string.Format(TABLE_EXISTS, _journalTableStructure.TableName);
+        public static int TestScriptNumber => Int32.MaxValue;
     }
 
 }

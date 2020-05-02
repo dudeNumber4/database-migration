@@ -21,7 +21,7 @@ namespace DatabaseMigration
 
         private readonly string _journalTableCreationScript;
 
-        internal JournalTable(string connectionString, IStartupLogger log, string journalTableCreationScript, Dictionary<string, string> failedScripts)
+        internal JournalTable(string connectionString, IStartupLogger log, string journalTableCreationScript, Dictionary<int, string> failedScripts)
             : base(log)
         {
             _connectionString = connectionString;
@@ -62,10 +62,10 @@ namespace DatabaseMigration
         /// The lock is actually released before the method finishes, so the name is a bit off, but follows a familiar naming pattern.
         /// Additionally, we're actually doing more than just "locking," we're potentially adding a record to the journal table.
         /// </summary>
-        /// <param name="resource">script resource: name and actual script</param>
+        /// <param name="script">script: the actual script</param>
         /// <returns>True if the current script hasn't already been executed or is assumed to have failed in a prior run (<see cref="ScriptFailedInPriorRun"/>) or the journal table just doesn't exist</returns>
         /// <remarks>Assumption: we are running in a security context that has access to the database.</remarks>
-        internal bool TryAcquireLockFor((string name, string value) resource)
+        internal bool TryAcquireLockFor((int number, string value) script)
         {
             var result = false;
             AssertOpenConnection();
@@ -78,7 +78,7 @@ namespace DatabaseMigration
                 {
                     // Explicit table lock hint.  Not often used, maybe I'm re-inventing a queue here, so be it.
                     // The timeout here is 30 seconds.  I couldn't find any way to modify that (not related to connection timeout which is just timeout to initial connection to server).
-                    using (var cmd = new SqlCommand($"select * from {_journalTableStructure.TableName} (TABLOCKX) where {_journalTableStructure.NameColumn} = '{resource.name}'", _connection, transaction))
+                    using (var cmd = new SqlCommand($"select * from {_journalTableStructure.TableName} (TABLOCKX) where {_journalTableStructure.NumberColumn} = '{script.number}'", _connection, transaction))
                     {
                         try
                         {
@@ -87,7 +87,7 @@ namespace DatabaseMigration
                                 if (!reader.HasRows || ScriptFailedInPriorRun(reader))
                                 {
                                     reader.Close(); // must close before write.
-                                    result = RecordScriptInJournal(resource, true, transaction);
+                                    result = RecordScriptInJournal(script, true, transaction);
                                 }
                             }
                             transaction.Commit();
@@ -111,32 +111,32 @@ namespace DatabaseMigration
         /// <summary>
         /// Add a record that a script is being (begin true) or has completed (begin false) executed.
         /// </summary>
-        /// <param name="resource">Resource content: name and actual script</param>
+        /// <param name="script">number and actual script</param>
         /// <param name="begin">Whether we're recording the begin or end of script execution.</param>
         /// <param name="transaction">A SQL transaction is passed upon the initial write of the record for asynchronously running clients.</param>
         /// <returns>Pass/fail</returns>
         [SuppressMessage("Unk Category", "CA1307", Justification = "string replace won't ever care about culture")]
-        internal bool RecordScriptInJournal((string name, string value) resource, bool begin, SqlTransaction transaction = null)
+        internal bool RecordScriptInJournal((int number, string value) script, bool begin, SqlTransaction transaction = null)
         {
             Debug.Assert(_failedScripts != null, "HashSet of failed scripts is null.");
             var result = false;
-            var escapedScript = resource.value.Replace("'", "''");
+            var escapedScript = script.value.Replace("'", "''");
             char completed = '1';
             var msg = string.Empty;
 
             if (begin)
             {
-                DeletePriorEntry(resource.name, transaction);
+                DeletePriorEntry(script.number, transaction);
             }
-            else if (_failedScripts.ContainsKey(resource.name))
+            else if (_failedScripts.ContainsKey(script.number))
             {
                 completed = '0';
-                msg = _failedScripts[resource.name].Replace("'", "''"); // value is err msg
+                msg = _failedScripts[script.number].Replace("'", "''"); // value is err msg
             }
 
             var commandText = begin ? 
-                $"insert {_journalTableStructure.TableName}({_journalTableStructure.NameColumn}, {_journalTableStructure.BegunColumn}) values ('{resource.name}', GetUtcDate())" 
-                : $"update {_journalTableStructure.TableName} set {_journalTableStructure.CompletedColumn} = {completed}, {_journalTableStructure.ScriptColumn} = '{escapedScript}', {_journalTableStructure.MessageColumn} = '{msg}' where {_journalTableStructure.NameColumn} = '{resource.name}'";
+                $"insert {_journalTableStructure.TableName}({_journalTableStructure.NumberColumn}, {_journalTableStructure.BegunColumn}) values ('{script.number}', GetUtcDate())" 
+                : $"update {_journalTableStructure.TableName} set {_journalTableStructure.CompletedColumn} = {completed}, {_journalTableStructure.ScriptColumn} = '{escapedScript}', {_journalTableStructure.MessageColumn} = '{msg}' where {_journalTableStructure.NumberColumn} = '{script.number}'";
             using (var cmd = new SqlCommand(commandText, _connection, transaction))
             {
                 try
@@ -157,11 +157,10 @@ namespace DatabaseMigration
         /// <summary>
         /// Remove any prior record for this script (for a script that began but didn't finish).
         /// </summary>
-        /// <param name="scriptName">The file name portion (including extension) of the script (the key of the script in the resource file).  Case insensitive.</param>
         [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1106:CodeMustNotContainEmptyStatements", Justification = "I want to continue.")]
-        private void DeletePriorEntry(string scriptName, SqlTransaction transaction)
+        private void DeletePriorEntry(int scriptNumber, SqlTransaction transaction)
         {
-            using (var cmd = new SqlCommand($"delete from {_journalTableStructure.TableName} where {_journalTableStructure.NameColumn} = '{scriptName}'", _connection, transaction))
+            using (var cmd = new SqlCommand($"delete from {_journalTableStructure.TableName} where {_journalTableStructure.NumberColumn} = '{scriptNumber}'", _connection, transaction))
             {
                 try
                 {

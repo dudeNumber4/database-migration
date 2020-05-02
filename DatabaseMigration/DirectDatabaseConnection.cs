@@ -20,7 +20,7 @@ namespace DatabaseMigration
         protected readonly SqlConnection _connection = new SqlConnection();
         protected readonly IStartupLogger _log;
         // script name, error msg
-        protected Dictionary<string, string> _failedScripts = new Dictionary<string, string>();
+        protected Dictionary<int, string> _failedScripts = new Dictionary<int, string>();
         protected string _connectionString;
         protected JournalTableStructure _journalTableStructure = new JournalTableStructure();
 

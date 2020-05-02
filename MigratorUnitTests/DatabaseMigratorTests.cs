@@ -21,7 +21,7 @@ namespace MigratorUnitTests
         public DatabaseMigratorTests()
         {
             var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-            _config = builder.Build();  // ServiceStack's config thing seems to need to be part normal app startup; can't use in isolation.
+            _config = builder.Build();
         }
 
         [Theory]
@@ -30,7 +30,7 @@ namespace MigratorUnitTests
         public void PerformMigration(bool normalExecution)
         {
             _connectionString = _config.GetConnectionString("migration");
-            TableExists(DatabaseMigratorTestScripts.JournalTableExistsScript).Should().BeTrue("Journal table expected to be present");
+            //TableExists(DatabaseMigratorTestScripts.JournalTableExistsScript).Should().BeTrue("Journal table expected to be present");
             ExecutePreScripts(normalExecution);
             SetMigratorSubstitute();
 
@@ -46,8 +46,8 @@ namespace MigratorUnitTests
             _databaseMigrator = Substitute.For<DatabaseMigrator>(TestLogger.Instance());
 
             // Return a script that simply creates a table.  Give it a high number/key so as to not clash with any existing scripts.  Yes, the test has way too much knowledge of the innards.
-            _databaseMigrator.GetResources().Returns(Enumerable.Repeat((DatabaseMigratorTestScripts.TestScriptName, DatabaseMigratorTestScripts.CreateTableScript), 1));
-            _databaseMigrator.GetJournalTableCreationScript().Returns(string.Empty);
+            _databaseMigrator.GetScripts().Returns(Enumerable.Repeat((DatabaseMigratorTestScripts.TestScriptNumber, DatabaseMigratorTestScripts.CreateTableScript), 1));
+            _databaseMigrator.GetJournalTableCreationScript().Returns(File.ReadAllText(@"..\..\..\..\DatabaseMigration\RuntimeScripts\1.sql"));
         }
 
         private bool TableExists(string tableExistsScript)

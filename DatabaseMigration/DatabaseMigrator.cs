@@ -21,7 +21,7 @@ namespace DatabaseMigration
 
     /// <summary>
     /// Manages migration script execution.
-    /// <see cref="SqlCmdResources"/><see cref="_resourceFilePath"/> is the resource containing migration scripts.
+    /// <see cref="_scriptFolderPath"/> is the folder containing migration scripts.
     /// Using basic ADO to connect to database to keep simple; only one table and a few columns to interact with, and we are doing this in a context where DI isn't even up and running.
     /// </summary>
     [SuppressMessage("Globalization", "CA1305", Justification="I don'need provider here")]
@@ -31,10 +31,9 @@ namespace DatabaseMigration
     {
 
         /// <summary>
-        /// Resource file copied to output.
-        /// This could be the more readable .resx file, but .Net core has made dealing with those a flat-out nightmare.  See ReadMe in database project for more.
+        /// Folder where scripts live.
         /// </summary>
-        private string _resourceFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "DatabaseMigrationScripts.resources");
+        private string _scriptFolderPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "RuntimeScripts");
         private Server _serverConnection;
 
         public DatabaseMigrator(IStartupLogger log)
@@ -60,22 +59,14 @@ namespace DatabaseMigration
         }
 
         /// <summary>
-        /// Get scripts from the script resource file.
+        /// Get file names from known folder.
         /// </summary>
         /// <returns>key name, resource value</returns>
-        public virtual IEnumerable<(string name, string value)> GetResources()
+        public virtual IEnumerable<(int fileNumber, string filePath)> GetScripts()
         {
-            IEnumerable<DictionaryEntry> GetResources()
+            foreach (var tuple in GetOrderedScripts())
             {
-                foreach (var entry in GetOrderedScripts())
-                {
-                    yield return entry;
-                }
-            }
-
-            foreach (DictionaryEntry item in GetResources())
-            {
-                yield return ((string)item.Key, (string)item.Value);
+                yield return tuple;
             }
         }
 
@@ -85,8 +76,8 @@ namespace DatabaseMigration
         /// <returns>x</returns>
         public virtual string GetJournalTableCreationScript()
         {
-            var firstResource = GetOrderedScripts(false).FirstOrDefault();
-            return firstResource.Key == null ? string.Empty : (string)firstResource.Value;
+            var firstScript = GetOrderedScripts(false).FirstOrDefault();
+            return firstScript.filePath == null ? string.Empty : File.ReadAllText(firstScript.filePath);
         }
 
         private void RunMigrations()
@@ -97,16 +88,16 @@ namespace DatabaseMigration
                 {
                     try
                     {
-                        foreach ((string name, string value) resource in GetResources())
+                        foreach ((int fileNumber, string filePath) script in GetScripts())
                         {
-                            if (journalTable.TryAcquireLockFor(resource))
+                            if (journalTable.TryAcquireLockFor((script.fileNumber, script.filePath)))
                             {
-                                ExecuteScript(resource.name, resource.value);
-                                journalTable.RecordScriptInJournal(resource, false);
+                                ExecuteScript(script.fileNumber, script.filePath);
+                                journalTable.RecordScriptInJournal(script, false);
                             }
                             else
                             {
-                                _log.LogInfo($"Skipping script [{resource.name}]; already executed or may be in process from another client.");
+                                _log.LogInfo($"Skipping script [{script.fileNumber}]; already executed or may be in process from another client.");
                             }
                         }
                     }
@@ -122,7 +113,7 @@ namespace DatabaseMigration
             }
         }
 
-        private bool ExecuteScript(string scriptName, string script)
+        private bool ExecuteScript(int scriptNumber, string script)
         {
             AssertOpenConnection();
             try
@@ -132,50 +123,49 @@ namespace DatabaseMigration
             }
             catch (ExecutionFailureException ex)
             {
-                _failedScripts.Add(scriptName, $"{ex.Message} {ex.InnerException.Message}");
+                _failedScripts.Add(scriptNumber, $"{ex.Message} {ex.InnerException.Message}");
                 return false;
             }
             catch (SqlException e)
             {
-                _failedScripts.Add(scriptName, e.Message);
+                _failedScripts.Add(scriptNumber, e.Message);
                 return false;
             }
         }
 
         /// <summary>
-        /// Not all keys will be represented as numbers.
+        /// Not all file names will be represented as numbers.
+        /// Correction; they should all be, but this code can remain.
         /// </summary>
-        private IEnumerable<DictionaryEntry> GetNumericResources()
+        private IEnumerable<(int fileNumber, string filePath)> GetNumericScripts()
         {
-            using (var reader = new ResourceReader(_resourceFilePath))
+            foreach (string file in Directory.EnumerateFiles(_scriptFolderPath))
             {
-                foreach (DictionaryEntry entry in reader)
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                if (int.TryParse(fileName, out var number))
                 {
-                    if (int.TryParse((string)entry.Key, out var number))
-                    {
-                        yield return entry;
-                    }
+                    yield return (number, file);
                 }
             }
         }
 
         /// <summary>
-        /// Get resource keys in order.
+        /// Get file names in order.
         /// </summary>
         /// <returns>Materialized list because it must be ordered.</returns>
-        private List<DictionaryEntry> GetOrderedScripts(bool skipFirstScript = true)
+        private IEnumerable<(int fileNumber, string filePath)> GetOrderedScripts(bool skipFirstScript = true)
         {
             // The first script should always be the journal table creation script.  CommitDatabaseScripts.ps1 back in the database project should've enforced that.
-            var result = GetNumericResources().OrderBy(de => Convert.ToInt32(de.Key)).ToList();
+            var result = GetNumericScripts().OrderBy(tuple => Convert.ToInt32(tuple.fileNumber)).ToList();
             if (skipFirstScript)
             {
                 if (result.Count >= 2)
                 {
-                    return result.Skip(1).ToList();
+                    return result.Skip(1);
                 }
                 else
                 {
-                    return new List<DictionaryEntry>();
+                    return Enumerable.Empty<(int fileNumber, string filePath)>();
                 }
             }
             else

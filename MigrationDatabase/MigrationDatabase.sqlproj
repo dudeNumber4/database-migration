@@ -77,4 +77,7 @@
     <None Include="UpdateDatabaseState.ps1" />
     <None Include="CommitDatabaseScripts.ps1" />
   </ItemGroup>
+  <ItemGroup>
+    <RefactorLog Include="MigrationDatabase.refactorlog" />
+  </ItemGroup>
 </Project>
