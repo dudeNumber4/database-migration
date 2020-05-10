@@ -6,7 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Resources;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
 using DatabaseMigration.Utils;
@@ -42,7 +41,7 @@ namespace DatabaseMigration
         }
 
         /// <summary>
-        /// Used to execute scripts in our DatabaseScripts resource
+        /// Used to execute scripts from our known location
         /// </summary>
         /// <param name="connectionStr">Connection String.</param>
         public void PerformMigrations(string connectionStr)
@@ -61,7 +60,7 @@ namespace DatabaseMigration
         /// <summary>
         /// Get file names from known folder.
         /// </summary>
-        /// <returns>key name, resource value</returns>
+        /// <returns>fileNumber, filePath</returns>
         public virtual IEnumerable<(int fileNumber, string filePath)> GetScripts()
         {
             foreach (var tuple in GetOrderedScripts())
@@ -103,7 +102,7 @@ namespace DatabaseMigration
                     }
                     catch (FormatException ex)
                     {
-                        _log.LogInfo($"Error encountered during processing of script resources.  Resource file may be corrupted: {ex.Message}");
+                        _log.LogInfo($"Error encountered during processing of script: {ex.Message}");
                     }
                 }
                 else

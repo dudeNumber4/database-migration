@@ -47,7 +47,9 @@ namespace MigratorUnitTests
 
             // Return a script that simply creates a table.  Give it a high number/key so as to not clash with any existing scripts.  Yes, the test has way too much knowledge of the innards.
             _databaseMigrator.GetScripts().Returns(Enumerable.Repeat((DatabaseMigratorTestScripts.TestScriptNumber, DatabaseMigratorTestScripts.CreateTableScript), 1));
-            _databaseMigrator.GetJournalTableCreationScript().Returns(File.ReadAllText(@"..\..\..\..\DatabaseMigration\RuntimeScripts\1.sql"));
+            var JOURNAL_TABLE_SCRIPT = @$"..\..\..\..\{nameof(DatabaseMigration)}\RuntimeScripts\1.sql"; // first should be journal table creation script.
+            File.Exists(JOURNAL_TABLE_SCRIPT).Should().BeTrue();
+            _databaseMigrator.GetJournalTableCreationScript().Returns(File.ReadAllText(JOURNAL_TABLE_SCRIPT));
         }
 
         private bool TableExists(string tableExistsScript)

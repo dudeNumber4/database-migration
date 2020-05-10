@@ -11,6 +11,8 @@ begin
 	exec sp_rename 'MigrationsJournal.ScriptName', 'ScriptNumber', 'COLUMN' 
 end
 
+go
+
 -- Exact representation as the table in the database project
 if not exists(select 1 from sys.tables where [name] = 'MigrationsJournal')
 CREATE TABLE [dbo].[MigrationsJournal] (

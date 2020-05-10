@@ -74,7 +74,7 @@
     <None Include="Common.psm1" />
     <None Include="ExtractResourceScripts.ps1" />
     <None Include="GenerateMigrationScript.ps1" />
-    <None Include="UpdateDatabaseState.ps1" />
+    <None Include="UpdateDatabaseStateFile.ps1" />
     <None Include="CommitDatabaseScripts.ps1" />
   </ItemGroup>
   <ItemGroup>

@@ -1,53 +1,25 @@
 <#
-• Looks for scripts in Migrations & AdHoc directory to add to the resource file in the console app.  Also updates the known file DatabaseState.dacpac to the current state.
-Migrations will be added to resource and added to the database journal table; assumes developer has already made these changes.
-AdHoc will be added to resource and NOT added to the database journal table; assumes developer has written the script but wants it to executed upon next startup of console.
-Scripts in AdHoc will have their project reference deleted after processing if they were added via project right-click.
+• Looks for scripts in Migrations & AdHoc directory to add to script folder in the service and as an embedded resource to the service project (see $global:ServiceProjFilePath).
+• Scripts in AdHoc will have their project reference deleted after processing if they were added via project right-click.
 • Every reference to "$dte" is a dependency on visual studio.  The whole thing could be independent of vs, but it's much easier this way and more convenient to run it.
 #>
 
 Import-Module "$PSScriptRoot\Common.psm1" #-Force
 
-$global:MigrationTableName = 'MigrationsJournal'
-$global:MigrationTableScriptNameColumn = 'ScriptName'
-$global:MigrationTableAppliedAttemptedColumn = 'AppliedAttempted'
-$global:MigrationTableAppliedCompletedColumn = 'AppliedCompleted'
-$global:ScriptAppliedColumn = 'ScriptApplied'
-$global:MsgColumn = 'Msg'
 # Set after determining solution root
-$global:ResourceFileBackupPath = ''
-$global:JournalTableCreationScriptPath = ''
-$global:NewResources = @()
-$global:NextScriptKey = 0
-
-# Caller must clean up
-function GetResourceWriter {
-    New-Object System.Resources.ResourceWriter -ArgumentList $global:ResourceFilePath
-}
+$global:NextScriptNumber = 0
+$global:ServiceProjFilePath = 'C:\source\database-migration\DatabaseMigration\DatabaseMigration.csproj'
 
 <#
 .DESCRIPTION
-Script resource keys are ordered except our pre-required create journal script.  This gets the next key (int) to use based on the resources we already have.
-LoadExistingResources must have been called first.
+Script files are numbered (1.sql should be the migration table creation/update script and is assumed to always be present).  This gets the next number to use based on the scripts we already have.
 #>
-function GetNextScriptKey {
-    Write-Host "Counting scripts in $global:ResourceFilePath" -ForegroundColor DarkGreen
-    $r = GetResourceReader $global:ResourceFileBackupPath
-    try {
-        $junkref = 0
-        # you can't split pipes.  Much sadness.
-        # Find the max of all keys where the key converts to int
-        $max = ($r | Where-Object { [int]::TryParse($_.Key, [ref] $junkref) } | Select-Object -ExpandProperty Key | ForEach-Object { [System.Convert]::ToInt32($_) } | Measure-Object -Max).Maximum
-        # Leave it at this number because the call to add a new script will increment it.
-        if ($null -eq $max) {
-            $max = 0
-        }
-        Write-Host "Counted $max existing scripts." -ForegroundColor DarkGreen
-        $max
-    }
-    finally {
-        $r.Close() > $null
-    }
+function GetNextScriptNumber {
+    Write-Host "Counting scripts in $global:ServiceProjFilePath" -ForegroundColor DarkGreen
+    $projRoot = [System.IO.Path]::GetDirectoryName($global:ServiceProjFilePath)
+    $scriptDir = [System.IO.Path]::Combine($projRoot, $scriptFolderName)
+    $max = (Get-ChildItem -Path $scriptDir -File | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_) } | Measure-Object -Max).Maximum
+    $max + 1
 }
 
 function TestScriptRelatedPaths {
@@ -55,16 +27,11 @@ function TestScriptRelatedPaths {
     Write-Host "Testing script related paths." -ForegroundColor DarkGreen
     if (Test-Path $global:MigrationScriptPath) {
         if (Test-Path $global:AdHocScriptPath) {
-            if (Test-Path $global:ResourceFilePath) {
-                if (Test-Path $global:JournalTableCreationScriptPath) {
-                    $true
-                }
-                else {
-                    throw "Expected to find journal table creation script: $global:JournalTableCreationScriptPath"
-                }
+            if (Test-Path $global:ResourceFolderPath) {
+                $true
             }
             else {
-                throw "Expected to find resource file: $global:ResourceFilePath"
+                throw "Expected to find folder: $global:ResourceFolderPath"
             }
         }
         else {
@@ -74,12 +41,6 @@ function TestScriptRelatedPaths {
     else {
         throw "Migration script path invalid: $global:AdHocScriptPath"
     }
-}
-
-# Pre: EnsureDatabaseProjectSelected & SetProjectBasedGlobals have been called.
-function SetScriptSourcePaths {
-    $global:ResourceFileBackupPath = "$global:ResourceFilePath.bak"
-    $global:JournalTableCreationScriptPath = (Get-ChildItem -Path $global:DatabaseProjRootPath\ -Include "$global:MigrationTableName.sql" -File -Recurse -ErrorAction SilentlyContinue).FullName
 }
 
 <#
@@ -92,65 +53,81 @@ function GetScriptContent([string] $scriptPath) {
 
 <#
 .DESCRIPTION
-Adds script at path passed in to the collection of resources $global:NewResources
+Returns <ItemGroup> parent that holds references to our script files in the project file.
 #>
-function AddToResource([string] $scriptPath) {
-    $global:NextScriptKey = $global:NextScriptKey + 1
-    Write-Host "Adding $scriptPath as script #$global:NextScriptKey" -ForegroundColor DarkGreen
-    try {
-        $scriptContent = GetScriptContent $scriptPath
-        $global:NewResources += @{ Key = ($global:NextScriptKey).ToString(); Value = $scriptContent }
-    } 
-    catch {
-        Write-Host $_ -ForegroundColor Red
-        exit # Without this the script may keep going
+function GetScriptItemGroup([System.Xml.XmlDocument] $doc) {
+    $doc.Load($global:ServiceProjFilePath) > $null
+    if ($null -eq $doc.DocumentElement) {
+        throw 'Failed to load project file.'
+    }
+    $errMsg = 'Unable to find expected initial script'
+    #$node = $doc.SelectSingleNode('/Project/ItemGroup/EmbeddedResource[@Include="RuntimeScripts\1.sql"]') works, but more specific
+    $node = $doc.SelectSingleNode('descendant::ItemGroup/EmbeddedResource[@Include="RuntimeScripts\1.sql"]')
+    if ($null -eq $node) {
+        throw $errMsg
+    } else {
+        $result = $node.ParentNode
+        if ($null -eq $result) {
+            throw $errMsg
+        }
+        elseif ($result -is [Array]) {
+            $result[0]
+        } else {
+            $result
+        }
     }
 }
 
 <#
 .DESCRIPTION
-The script to create the journal table should be the first script in the resource file.
+Moves script from where it was created to it's final resting place.
 #>
-function EnsureJournalScriptPresent {
-    if ($global:NextScriptKey -eq 0) {
-        Write-Host "No existing scripts found.  Adding journal table creation script as first." -ForegroundColor DarkGreen
-        AddToResource $global:JournalTableCreationScriptPath $True
+function MoveScript([string] $scriptPath) {
+    $fileName = [System.IO.Path]::GetFileName($scriptPath)
+    $finalRestingPlace = [System.IO.Path]::Combine($global:ResourceFolderPath, $fileName)
+    Move-Item $scriptPath $finalRestingPlace > $null
+}
+
+<#
+.DESCRIPTION
+We've found our parent ItemGroup in the project file; append our new element referencing our script.
+#>
+function AppendResourceElement([System.Xml.XmlDocument] $doc, [System.Xml.XmlElement] $parent, [string] $scriptFileName) {
+    try {
+        $scriptResourceElem = $doc.CreateNode([System.Xml.XmlNodeType]::Element, 'EmbeddedResource', [System.string]::Empty)
+        $includeAttr = $doc.CreateAttribute('Include')
+        $includeAttr.Value = "$scriptFolderName\$scriptFileName"
+        $scriptResourceElem.Attributes.Append($includeAttr) > $null
+        
+        $copyElem = $doc.CreateNode([System.Xml.XmlNodeType]::Element, 'CopyToOutputDirectory', [System.string]::Empty)
+        $copyElem.InnerText = 'PreserveNewest'
+        $scriptResourceElem.AppendChild($CopyElem) > $null
+        $parent.AppendChild($scriptResourceElem) > $null
+    }
+    catch {
+        throw "Error adding script as resource to project: $_.Message"
     }
 }
 
 <#
 .DESCRIPTION
-Write out new resources we've loaded to $global:ResourceFilePath
+A script has been created and identified to be committed as a resource.  Move it to it's final resting place and add it as a resource to the service project.
 #>
-function FlushResourcesToResourceFile() {
-    $writer = GetResourceWriter
+function CommitScriptAsResource([string] $initialScriptPath) {
+    Write-Host "Adding $initialScriptPath as script #$global:NextScriptNumber" -ForegroundColor DarkGreen
     try {
-        Write-Host "Writing existing scripts to resource file." -ForegroundColor DarkGreen
-        CopyExistingResourcesToResourceFile $writer
-        Write-Host "Writing new scripts to resource file." -ForegroundColor DarkGreen
-        $global:NewResources | ForEach-Object { $writer.AddResource($_.Key, $_.Value) }
-    } 
+        MoveScript $global:ServiceProjFilePath $initialScriptPath
+        $doc = New-Object -TypeName 'System.Xml.XmlDocument'
+        $parentElem = GetScriptItemGroup $global:ServiceProjFilePath $doc
+        $scriptFileName = [System.IO.Path]::GetFileName($initialScriptPath)
+        AppendResourceElement $doc $parentElem $scriptFileName
+        $doc.Save($global:ServiceProjFilePath) > $null
+    }
     catch {
-        Write-Host $_ -ForegroundColor Red
-        exit # Without this the script may keep going
+        Write-Host "Error committing script: $_.Exception.Message"
     }
     finally {
-        $writer.Close() > $null
-    }
-}
-
-<#
-.DESCRIPTION
-Write out the resources that existed prior to execution (that we wrote to a .bak file).
-This must be called in the context of FlushResourcesToResourceFile because that's where the writer is opened.
-#>
-function CopyExistingResourcesToResourceFile([System.Resources.ResourceWriter] $writer) {
-    $r = GetResourceReader $global:ResourceFileBackupPath
-    try {
-        $r | ForEach-Object { $writer.AddResource($_.Key, $_.Value) }
-    }
-    finally {
-        $r.Close() > $null
+        $doc = $null
     }
 }
 
@@ -170,7 +147,7 @@ function ProcessMigrationDirectory {
         else {
             if ($scriptCount -eq 1) {
                 $scriptPath = (Get-Childitem -Path $global:MigrationScriptPath).FullName | Select-Object -First 1
-                AddToResource $scriptPath
+                CommitScriptAsResource $scriptPath
                 Remove-Item $scriptPath
             }
         }
@@ -196,25 +173,24 @@ function FindScriptInProjectItems($projectItem, $scriptName) {
 <#
 .DESCRIPTION
 Process $global:AdHocScriptPath
-Add scripts found there to known resource file.
+Add scripts found there to known folder.
 #>
 function ProcessAdHocDirectory {
     Write-Host "Processing scripts in $global:AdHocScriptPath" -ForegroundColor DarkGreen
     try {
         Get-Childitem -Path $global:AdHocScriptPath | ForEach-Object {
-            AddToResource $_.FullName
+            CommitScriptAsResource $_.FullName
             # delete the file
             Remove-Item $_.FullName
             # Remove the item from the project if present.  Active project has been enforced to be the database project.
             $scriptProjectItem = FindScriptInProjectItems $dte.ActiveSolutionProjects $_.Name # file name only
             if ($null -ne $scriptProjectItem) {
-                # Remove the project item; we added it to the resource, we don't want it as part of DB project anymore (it will normally be there because we right-clicked and added from the Ad-Hoc dir).
+                # Remove the project item; we added it as a resource, we don't want it as part of DB project anymore (it will normally be there because we right-clicked and added from the Ad-Hoc dir).
                 $scriptProjectItem.Remove()
                 # Issue save command to remove the above file reference from the database project file.
                 $dte.ExecuteCommand("File.SaveAll")
             }
         }
-        FlushResourcesToResourceFile
     } 
     catch {
         Write-Host $_ -ForegroundColor Red
@@ -225,21 +201,10 @@ function ProcessAdHocDirectory {
 # MAIN
 EnsureDatabaseProjectSelected
 SetProjectBasedGlobals
-SetScriptSourcePaths
 EnsureExpectedDirectoriesExist
 
 if (TestScriptRelatedPaths) { # else error written to console
-    Write-Host "Creating backup of existing resources to $global:ResourceFileBackupPath" -ForegroundColor DarkGreen
-    Copy-Item $global:ResourceFilePath $global:ResourceFileBackupPath # backup existing.  We can't ever add to the file with existing framework objects.
-    try {
-        # Get the next script nummber based on current scripts
-        $global:NextScriptKey = GetNextScriptKey
-        EnsureJournalScriptPresent
-        ProcessMigrationDirectory
-        ProcessAdHocDirectory
-    }
-    finally {
-        Write-Host "Deleting backup resource file." -ForegroundColor DarkGreen
-        Remove-Item $global:ResourceFileBackupPath
-    }
+    $global:NextScriptNumber = GetNextScriptNumber
+    ProcessMigrationDirectory
+    ProcessAdHocDirectory
 }
