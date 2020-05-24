@@ -15,10 +15,8 @@ $global:ServiceProjFilePath = 'C:\source\database-migration\DatabaseMigration\Da
 Script files are numbered (1.sql should be the migration table creation/update script and is assumed to always be present).  This gets the next number to use based on the scripts we already have.
 #>
 function GetNextScriptNumber {
-    Write-Host "Counting scripts in $global:ServiceProjFilePath" -ForegroundColor DarkGreen
-    $projRoot = [System.IO.Path]::GetDirectoryName($global:ServiceProjFilePath)
-    $scriptDir = [System.IO.Path]::Combine($projRoot, $scriptFolderName)
-    $max = (Get-ChildItem -Path $scriptDir -File | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_) } | Measure-Object -Max).Maximum
+    Write-Host "Counting scripts in $global:ResourceFolderPath" -ForegroundColor DarkGreen
+    $max = (Get-ChildItem -Path $global:ResourceFolderPath -File | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_) } | Measure-Object -Max).Maximum
     $max + 1
 }
 
@@ -41,14 +39,6 @@ function TestScriptRelatedPaths {
     else {
         throw "Migration script path invalid: $global:AdHocScriptPath"
     }
-}
-
-<#
-.DESCRIPTION
-Assumes $scriptPath is a file that exists; returns it's content without squashing newlines.
-#>
-function GetScriptContent([string] $scriptPath) {
-    Get-Content -Path $scriptPath -Delimiter '\0'
 }
 
 <#

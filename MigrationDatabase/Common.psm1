@@ -10,8 +10,8 @@ $global:SolutionRootDir = ''
 $global:BuildOutputDir = ''
 $global:MigrationScriptPath = ''
 $global:AdHocScriptPath = ''
-# :Configure: set/confirm path to DatabaseMigration\DatabaseMigrationScripts.resources relative to your solution root.
-$global:ScriptFolderName = 'RuntimeScripts'
+# :Configure: set/confirm your service name in the path portion below.
+$global:ScriptFolderName = 'DatabaseMigration\RuntimeScripts'
 $global:ResourceFolderPath = ''
 
 function TestProjectPaths {
@@ -115,4 +115,12 @@ function BuildDacpac {
         Write-Host $_ -ForegroundColor Red
         exit # Without this the script may keep going
     }
+}
+
+<#
+.DESCRIPTION
+Assumes $scriptPath is a file that exists; returns it's content without squashing newlines.
+#>
+function GetScriptContent([string] $scriptPath) {
+    Get-Content -Path $scriptPath -Delimiter '\0'
 }

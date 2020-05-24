@@ -1,9 +1,13 @@
-*.dacpac
+# database project files
 *.dbmdl
 *.jfm
+*.refactorlog
+*.dacpac
+
 *.log
 *.suo
 *.user
+
 packages
 .vs
 .cr
