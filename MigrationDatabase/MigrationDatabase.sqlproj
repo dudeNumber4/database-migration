@@ -76,9 +76,5 @@
     <None Include="GenerateMigrationScript.ps1" />
     <None Include="UpdateDatabaseStateFile.ps1" />
     <None Include="CommitDatabaseScripts.ps1" />
-    <None Include="Script1.ps1" />
-  </ItemGroup>
-  <ItemGroup>
-    <RefactorLog Include="MigrationDatabase.refactorlog" />
   </ItemGroup>
 </Project>
