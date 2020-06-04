@@ -1,6 +1,3 @@
-############################################ Merge Driver
-$GitConfigPath = './.git/config'
-
 # Add to gitignore database project files
 $GitIgnorePath = './.gitignore'
 $GitIgnoreContent = @'
@@ -34,6 +31,7 @@ if [ "$1" == "$2"  ] && [ ${NUM_CHECKOUTS} -eq 1 ]; then
 fi
 '@
 
+$LegacyCreateBranchHookScriptPath = './CreateBranchHook.ps1'
 $CreateBranchHookScriptPath = './GitHooks/CreateBranchHook.ps1'
 $CreateBranchHookScript = @'
 # This file was written by deploy-database-git-scripts.ps1
@@ -172,34 +170,25 @@ function AddConfigFileEntry($configFilePath, $content) {
 
 <#
 .DESCRIPTION
-Add the branch hook file (the part that triggers the hook when creating a new branch; not the actual hook script) at the root of the repo.
+Create the hook script that is invoked upon branch creation.
 #>
-function AddBranchHook {
-    if (Test-Path $CreateBranchHookPath) {
-        $existingContent = Get-Content -Path $CreateBranchHookPath -Delimiter '\0'
+function WriteBranchHookScript {
+    if (Test-Path $LegacyCreateBranchHookScriptPath) {
+        Remove-Item $LegacyCreateBranchHookScriptPath
     }
-    if ($null -eq $existingContent) {
-        # add the file; it doesn't exist
-        Set-Content -Path $CreateBranchHookPath $CreateBranchHook
-        Return
-    }
-    if (-not ($existingContent.Contains($CreateBranchHook))) {
-        # The have an existing hook (rare); we ain't gonna parse it.
-        Write-Host "Found an existing hook ($CreateBranchHookPath).  Unable to add our version.  The 2 hooks would have to be manually combined.  Check the contents of this script." -ForegroundColor Red
-        Exit
-    }
+    Set-Content -Path $CreateBranchHookScriptPath $CreateBranchHookScript
 }
 
-# Assume this script is running from repo root\GetHooks; set location there
+# Assume this script is running from repo root/GitHooks; set location to parent (back to root).
 Set-Location (Get-Item $PSCommandPath).Directory.Parent.FullName
 
 # These might fail
 EnsureInsideRepo
-AddBranchHook
+# Add the branch hook file (the part that triggers the hook when creating a new branch; not the actual hook script) at the root of the repo.
+# Overwrite any previous version.
+Set-Content -Path $CreateBranchHookPath $CreateBranchHook
 
 AddConfigFileEntry $GitIgnorePath $GitIgnoreContent
-
-# Write out script
-Set-Content -Path $CreateBranchHookScriptPath $CreateBranchHookScript
+WriteBranchHookScript
 
 Write-Host 'Git configured.'
