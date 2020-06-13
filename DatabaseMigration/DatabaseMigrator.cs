@@ -23,8 +23,8 @@ namespace DatabaseMigration
     /// <see cref="_scriptFolderPath"/> is the folder containing migration scripts.
     /// Using basic ADO to connect to database to keep simple; only one table and a few columns to interact with, and we are doing this in a context where DI isn't even up and running.
     /// </summary>
-    [SuppressMessage("Globalization", "CA1305", Justification="I don'need provider here")]
-    [SuppressMessage("Globalization", "CA1304", Justification="I don'tneed provider here")]
+    [SuppressMessage("Globalization", "CA1305", Justification="I don't need provider here")]
+    [SuppressMessage("Globalization", "CA1304", Justification="I don't need provider here")]
     [SuppressMessage("Security Category", "CA2100", Justification = "SQL Statements are generated within")]
     public class DatabaseMigrator : DirectDatabaseConnection, IDatabaseMigrator
     {
@@ -33,7 +33,6 @@ namespace DatabaseMigration
         /// Folder where scripts live.
         /// </summary>
         private string _scriptFolderPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "RuntimeScripts");
-        private Server _serverConnection;
 
         public DatabaseMigrator(IStartupLogger log)
             : base(log)
@@ -81,55 +80,46 @@ namespace DatabaseMigration
 
         private void RunMigrations()
         {
-            using (var journalTable = new JournalTable(_connectionString, _log, GetJournalTableCreationScript(), _failedScripts))
+            using var journalTable = new JournalTable(_connectionString, _log, GetJournalTableCreationScript(), _serverConnection, _failedScripts);
+            if (journalTable.EnsureTableExists())
             {
-                if (journalTable.EnsureTableExists())
+                try
                 {
-                    try
+                    foreach ((int fileNumber, string filePath) script in GetScripts())
                     {
-                        foreach ((int fileNumber, string filePath) script in GetScripts())
+                        if (journalTable.TryAcquireLockFor((script.fileNumber, script.filePath)))
                         {
-                            if (journalTable.TryAcquireLockFor((script.fileNumber, script.filePath)))
-                            {
-                                ExecuteScript(script.fileNumber, script.filePath);
-                                journalTable.RecordScriptInJournal(script, false);
-                            }
-                            else
-                            {
-                                _log.LogInfo($"Skipping script [{script.fileNumber}]; already executed or may be in process from another client.");
-                            }
+                            ExecuteScript(script.fileNumber, File.ReadAllText(script.filePath));
+                            journalTable.RecordScriptInJournal(script, false);
+                        }
+                        else
+                        {
+                            _log.LogInfo($"Skipping script [{script.fileNumber}]; already executed or may be in process from another client.");
                         }
                     }
-                    catch (FormatException ex)
-                    {
-                        _log.LogInfo($"Error encountered during processing of script: {ex.Message}");
-                    }
                 }
-                else
+                catch (FormatException ex)
                 {
-                    _log.LogInfo($"Unable to create/ensure presence of table {_journalTableStructure.TableName}");
+                    _log.LogInfo($"Error encountered during processing of script: {ex.Message}");
                 }
+            }
+            else
+            {
+                _log.LogInfo($"Unable to create/ensure presence of table {_journalTableStructure.TableName}");
             }
         }
 
         private bool ExecuteScript(int scriptNumber, string script)
         {
             AssertOpenConnection();
-            try
+            // We need ContinueOnError so we can continue after failed 'go' segments.  But the price we pay is no error message.
+            int result = _serverConnection.ConnectionContext.ExecuteNonQuery(script, ExecutionTypes.ContinueOnError);
+            if (result == 0)
             {
-                _serverConnection.ConnectionContext.ExecuteNonQuery(script, ExecutionTypes.ContinueOnError);
-                return true;
-            }
-            catch (ExecutionFailureException ex)
-            {
-                _failedScripts.Add(scriptNumber, $"{ex.Message} {ex.InnerException.Message}");
+                _failedScripts.Add(scriptNumber, "Script execution failure");
                 return false;
             }
-            catch (SqlException e)
-            {
-                _failedScripts.Add(scriptNumber, e.Message);
-                return false;
-            }
+            return true;
         }
 
         /// <summary>

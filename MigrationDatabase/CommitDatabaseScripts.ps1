@@ -4,7 +4,7 @@
 • Every reference to "$dte" is a dependency on visual studio.  The whole thing could be independent of vs, but it's much easier this way and more convenient to run it.
 #>
 
-Import-Module "$PSScriptRoot\Common.psm1" #-Force
+Import-Module "$PSScriptRoot\Common.psm1" -Force
 
 # Set after determining solution root
 $global:NextScriptNumber = 0
@@ -70,12 +70,12 @@ function GetScriptItemGroup([System.Xml.XmlDocument] $doc) {
 
 <#
 .DESCRIPTION
-Moves script from where it was created to it's final resting place.
+Copies script from where it was created to it's final resting place and returns the new script file path.
 #>
-function MoveScript([string] $scriptPath) {
-    $fileName = [System.IO.Path]::GetFileName($scriptPath)
-    $finalRestingPlace = [System.IO.Path]::Combine($global:ResourceFolderPath, $fileName)
-    Move-Item $scriptPath $finalRestingPlace > $null
+function CopyScript([string] $scriptPath) {
+    $finalRestingPlace = [System.IO.Path]::Combine($global:ResourceFolderPath, "$global:NextScriptNumber.sql")
+    Copy-Item $scriptPath $finalRestingPlace > $null
+    $finalRestingPlace
 }
 
 <#
@@ -86,7 +86,7 @@ function AppendResourceElement([System.Xml.XmlDocument] $doc, [System.Xml.XmlEle
     try {
         $scriptResourceElem = $doc.CreateNode([System.Xml.XmlNodeType]::Element, 'EmbeddedResource', [System.string]::Empty)
         $includeAttr = $doc.CreateAttribute('Include')
-        $includeAttr.Value = "$scriptFolderName\$scriptFileName"
+        $includeAttr.Value = "$global:ScriptFolderName\$scriptFileName"
         $scriptResourceElem.Attributes.Append($includeAttr) > $null
         
         $copyElem = $doc.CreateNode([System.Xml.XmlNodeType]::Element, 'CopyToOutputDirectory', [System.string]::Empty)
@@ -95,7 +95,7 @@ function AppendResourceElement([System.Xml.XmlDocument] $doc, [System.Xml.XmlEle
         $parent.AppendChild($scriptResourceElem) > $null
     }
     catch {
-        throw "Error adding script as resource to project: $_.Message"
+        throw "Error adding script as resource to project: $_"
     }
 }
 
@@ -106,15 +106,17 @@ A script has been created and identified to be committed as a resource.  Move it
 function CommitScriptAsResource([string] $initialScriptPath) {
     Write-Host "Adding $initialScriptPath as script #$global:NextScriptNumber" -ForegroundColor DarkGreen
     try {
-        MoveScript $global:ServiceProjFilePath $initialScriptPath
+        $newFilePath = CopyScript $initialScriptPath
         $doc = New-Object -TypeName 'System.Xml.XmlDocument'
-        $parentElem = GetScriptItemGroup $global:ServiceProjFilePath $doc
-        $scriptFileName = [System.IO.Path]::GetFileName($initialScriptPath)
+        $parentElem = GetScriptItemGroup $doc
+        $scriptFileName = [System.IO.Path]::GetFileName($newFilePath)
         AppendResourceElement $doc $parentElem $scriptFileName
         $doc.Save($global:ServiceProjFilePath) > $null
+        $true
     }
     catch {
-        Write-Host "Error committing script: $_.Exception.Message"
+        Write-Host "Error committing script: $_.  Note that your script may have moved to the RuntimeScripts directory as '$newFileName'."
+        $false
     }
     finally {
         $doc = $null
@@ -137,7 +139,11 @@ function ProcessMigrationDirectory {
         else {
             if ($scriptCount -eq 1) {
                 $scriptPath = (Get-Childitem -Path $global:MigrationScriptPath).FullName | Select-Object -First 1
-                CommitScriptAsResource $scriptPath
+                $result = CommitScriptAsResource $scriptPath
+                if ($result -eq $false) {
+                    Write-Host 'Error processing migration directory; exiting.'
+                    exit
+                }
                 Remove-Item $scriptPath
             }
         }
@@ -169,7 +175,11 @@ function ProcessAdHocDirectory {
     Write-Host "Processing scripts in $global:AdHocScriptPath" -ForegroundColor DarkGreen
     try {
         Get-Childitem -Path $global:AdHocScriptPath | ForEach-Object {
-            CommitScriptAsResource $_.FullName
+            $result = CommitScriptAsResource $_.FullName
+            if ($result -eq $false) {
+                Write-Host 'Error processing AdHoc directory; exiting.'
+                exit
+            }
             # delete the file
             Remove-Item $_.FullName
             # Remove the item from the project if present.  Active project has been enforced to be the database project.

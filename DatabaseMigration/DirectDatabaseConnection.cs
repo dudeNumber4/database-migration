@@ -1,4 +1,5 @@
 using DatabaseMigration.Utils;
+using Microsoft.SqlServer.Management.Smo;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -23,6 +24,7 @@ namespace DatabaseMigration
         protected Dictionary<int, string> _failedScripts = new Dictionary<int, string>();
         protected string _connectionString;
         protected JournalTableStructure _journalTableStructure = new JournalTableStructure();
+        protected Server _serverConnection;
 
         public DirectDatabaseConnection(IStartupLogger log)
         {

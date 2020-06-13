@@ -66,8 +66,6 @@
   </ItemGroup>
   <ItemGroup>
     <Build Include="dbo\Tables\Entity.sql" />
-    <Build Include="dbo\Tables\Metadata.sql" />
-    <Build Include="dbo\Tables\MigrationsJournal.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="UpdateProject.scmp" />

@@ -10,8 +10,9 @@ $global:SolutionRootDir = ''
 $global:BuildOutputDir = ''
 $global:MigrationScriptPath = ''
 $global:AdHocScriptPath = ''
+$global:ScriptFolderName = 'RuntimeScripts'
 # :Configure: set/confirm your service name in the path portion below.
-$global:ScriptFolderName = 'DatabaseMigration\RuntimeScripts'
+$global:ScriptFolderPath = "DatabaseMigration\$global:ScriptFolderName"
 $global:ResourceFolderPath = ''
 
 function TestProjectPaths {
@@ -52,7 +53,7 @@ function SetProjectBasedGlobals {
     $global:SourceDacPath = "$global:BuildOutputDir\$global:DatabaseProjectName.dacpac" # see comments in GenerateDiffScript
     $global:MigrationScriptPath = "$global:DatabaseProjRootPath\Scripts\Migrations"
     $global:AdHocScriptPath = "$global:DatabaseProjRootPath\Scripts\AdHoc"
-    $global:ResourceFolderPath = "$global:SolutionRootDir\$global:ScriptFolderName"
+    $global:ResourceFolderPath = "$global:SolutionRootDir\$global:ScriptFolderPath"
 }
 
 <#

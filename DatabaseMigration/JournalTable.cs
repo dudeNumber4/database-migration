@@ -1,12 +1,14 @@
+using DatabaseMigration.Utils;
+using Microsoft.SqlServer.Management.Smo;
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Linq;
 using System.Transactions;
-using DatabaseMigration.Utils;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace DatabaseMigration
@@ -21,14 +23,23 @@ namespace DatabaseMigration
 
         private readonly string _journalTableCreationScript;
 
-        internal JournalTable(string connectionString, IStartupLogger log, string journalTableCreationScript, Dictionary<int, string> failedScripts)
+        internal JournalTable(string connectionString, 
+                              IStartupLogger log, 
+                              string journalTableCreationScript,
+                              Server serverConnection,
+                              Dictionary<int, string> failedScripts)
             : base(log)
         {
             _connectionString = connectionString;
             _journalTableCreationScript = journalTableCreationScript;
             _failedScripts = failedScripts; // share failed scripts with DatabaseMigrator
+            _serverConnection = serverConnection;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <remarks>_journalTableCreationScript is expected to be idempotent</remarks>
         internal bool EnsureTableExists()
         {
             var result = OpenConnection();
@@ -38,17 +49,14 @@ namespace DatabaseMigration
                 // The creation script is idempotent.
                 if (!string.IsNullOrEmpty(_journalTableCreationScript) && _journalTableCreationScript.Contains("create table", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    using (var cmd = new SqlCommand(_journalTableCreationScript, _connection))
+                    try
                     {
-                        try
-                        {
-                            cmd.ExecuteNonQuery();
-                            result = true;
-                        }
-                        catch (SqlException ex)
-                        {
-                            _log.LogInfo($"Error executing table creation script (if not present) for table {_journalTableStructure.TableName}: {ex.Message}");
-                        }
+                        _serverConnection.ConnectionContext.ExecuteNonQuery(_journalTableCreationScript);
+                        result = true;
+                    }
+                    catch (SqlException ex)
+                    {
+                        _log.LogInfo($"Error executing table creation script (in case table not present) for table {_journalTableStructure.TableName}: {ex.Message}");
                     }
                 }
             }
@@ -120,7 +128,7 @@ namespace DatabaseMigration
         {
             Debug.Assert(_failedScripts != null, "HashSet of failed scripts is null.");
             var result = false;
-            var escapedScript = script.value.Replace("'", "''");
+            var scriptFileName = Path.GetFileName(script.value);
             char completed = '1';
             var msg = string.Empty;
 
@@ -136,7 +144,7 @@ namespace DatabaseMigration
 
             var commandText = begin ? 
                 $"insert {_journalTableStructure.TableName}({_journalTableStructure.NumberColumn}, {_journalTableStructure.BegunColumn}) values ('{script.number}', GetUtcDate())" 
-                : $"update {_journalTableStructure.TableName} set {_journalTableStructure.CompletedColumn} = {completed}, {_journalTableStructure.ScriptColumn} = '{escapedScript}', {_journalTableStructure.MessageColumn} = '{msg}' where {_journalTableStructure.NumberColumn} = '{script.number}'";
+                : $"update {_journalTableStructure.TableName} set {_journalTableStructure.CompletedColumn} = {completed}, {_journalTableStructure.ScriptColumn} = '{scriptFileName}', {_journalTableStructure.MessageColumn} = '{msg}' where {_journalTableStructure.NumberColumn} = '{script.number}'";
             using (var cmd = new SqlCommand(commandText, _connection, transaction))
             {
                 try

@@ -166,36 +166,32 @@ A system for automating the propogation of database changes throughout all dev/s
 
 ###### Manual System Test Plan
 * Beginning state (temp/junk database):
+  * Create below table; no other tables should exist in the database.
   * `CREATE TABLE [dbo].[Entity]([Id] [int] IDENTITY(1,1) primary key, [Name] [nvarchar](50) NULL)`
-  * Database table 'Entity' only has Id, Name
-  * MigrationsJournal table doesn't exist in the database.
-  * [database project]\DatabaseState.dacpac reflects database table state above (run UpdateProject.scmp to compare, build database project, copy the output over DatabaseState.dacpac
-	* Ensure there is already a script file (even if it's empty) in the "Migrations" folder.
-	* `truncate table Entity`
-	* Refresh DatabaseMigrationScripts.resources with the content of Empty.resources
-* Make backup of beginning dacpac state to compare against later.
+  * [database project]\DatabaseState.dacpac reflects database table state above (run UpdateProject.scmp to compare, update database project, then run script UpdateDatabaseStateFile.ps1)
+	* Directory DatabaseMigration\RuntimeScripts should only have the 1.sql (the initial MigrationsJournal creation script).
+* Make backup of MigrationDatabase\DatabaseState.dacpac to compare against later.
 	* "C:\temp\beginningState.dacpac"
-* Add "NewColumn" (varchar 10) to table using SSMS (or other tool) directly.
-* Update the database project using UpdateProject.scmp
-* Select the console project
+* Add "NewColumn" (varchar 10) to table directly in Entity.sql
+* Select the service project
 * Run `GenerateMigrationScript`
 	* Ensure it tells you to select the database project
-* Select the database project and Run GenerateMigrationScript again
-  * Ensure it warns that the journal table isn't present.  Run MigrationsJournal.sql to add the table.
-* Run `GenerateMigrationScript` again
+* Select the database project and Run `GenerateMigrationScript` again
   * Ensure a script pops up for adding "NewColumn" to table Entity.
-  * Ensure it's in the "Migrations" directory.
+  * Ensure it's in the Scripts\Migrations directory.
   * Ensure a custom comment is at the top informing you about the script generated.
   * Ensure the script will "parse" using the toolbar.
-* Run `CommitDatabaseScripts`
+* Close the script and run `GenerateMigrationScript` again.
+  * It should create the same script under a different (guid) name.
+* Close the script file and run `CommitDatabaseScripts`
   * Ensure it tells you that there are multiple scripts in Migrations folder.
-* Delete the extra junk sql file in the Migrations folder and Run `CommitDatabaseScripts` again.
-  * Ensure it informs you that it's adding the journal table as the first script.
+* Delete one of the guid sql files in the Scripts\Migrations folder and Run `CommitDatabaseScripts` again.
+  * Ensure it named the guid file in DatabaseMigration\RuntimeScripts to 2.sql
   * Ensure the Scripts/Migrations folder is empty.
-  * Ensure DatabaseState.dacpac and the recent build file match.
-  * Ensure beginningState.dacpac and new one don't match.
-  * Ensure file DatabaseMigrationScripts.resources.bak (temp file in same directory as the original) has been cleaned up (doesn't exist).
-* Launch the executable; ensure it reports that it skipped the script (it added a row for you the developer in MigrationsJournal because you applied it).  Ensure other output is as expected (no errors).
+  * Ensure the DatabaseMigration references the new script under the \RuntimeScripts folder
+* Launch the executable; ensure it _doesn't_ report that it skipped script 2.
+* Ensure table `MigrationsJournal` exists with one record (for script 2).
+* Ensure the new column was added to the table.
 * Create 2 scripts in the AdHoc directory by right clicking on the AdHoc folder in the database project.  They can both have as their command: `insert Entity values ('console test', 'console test')`
 * Run `CommitDatabaseScripts`
   * Ensure console output reports that the new scripts were added to resource.
