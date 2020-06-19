@@ -172,7 +172,7 @@ A system for automating the propogation of database changes throughout all dev/s
 	* Directory DatabaseMigration\RuntimeScripts should only have the 1.sql (the initial MigrationsJournal creation script).
 * Make backup of MigrationDatabase\DatabaseState.dacpac to compare against later.
 	* "C:\temp\beginningState.dacpac"
-* Add "NewColumn" (varchar 10) to table directly in Entity.sql
+* Add "NewColumn" (varchar 20) to table directly in Entity.sql
 * Select the service project
 * Run `GenerateMigrationScript`
 	* Ensure it tells you to select the database project

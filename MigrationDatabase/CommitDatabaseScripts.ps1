@@ -190,6 +190,7 @@ function ProcessAdHocDirectory {
                 # Issue save command to remove the above file reference from the database project file.
                 $dte.ExecuteCommand("File.SaveAll")
             }
+            $global:NextScriptNumber = $global:NextScriptNumber + 1
         }
     } 
     catch {

@@ -142,26 +142,9 @@ namespace DatabaseMigration
         /// Get file names in order.
         /// </summary>
         /// <returns>Materialized list because it must be ordered.</returns>
-        private IEnumerable<(int fileNumber, string filePath)> GetOrderedScripts(bool skipFirstScript = true)
-        {
+        private IEnumerable<(int fileNumber, string filePath)> GetOrderedScripts(bool skipFirstScript = true) =>
             // The first script should always be the journal table creation script.  CommitDatabaseScripts.ps1 back in the database project should've enforced that.
-            var result = GetNumericScripts().OrderBy(tuple => Convert.ToInt32(tuple.fileNumber)).ToList();
-            if (skipFirstScript)
-            {
-                if (result.Count >= 2)
-                {
-                    return result.Skip(1);
-                }
-                else
-                {
-                    return Enumerable.Empty<(int fileNumber, string filePath)>();
-                }
-            }
-            else
-            {
-                return result;
-            }
-        }
+            GetNumericScripts().Skip(skipFirstScript ? 1 : 0).OrderBy(tuple => tuple.fileNumber);
 
         private void ConfigureConnections(string connectionStr)
         {
