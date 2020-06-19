@@ -30,12 +30,12 @@ A system for automating the propogation of database changes throughout all dev/s
   * Copy `UpdateProject.scmp` from this `MigrationDatabase` to your database project.
   * If you don't already have a database add default dbo schema to your database project.
   * In your solution configuration, remove the database project from the build; it will never need to be part of the normal build process and will fail if called from .net core CLI.
-  * Add a table named MigrationsJournal to your database project.  Set it's (text) definition to this project's table of that name.
+  * Add a table named MigrationsJournal to your database project (/dbo/Tables/MigrationsJournal.sql).  Set it's (text) definition to this project's table of that name.
 * Set the current state of your database project:
    * Using `UpdateProject.scmp`:
      * Open the file, set the left side to point to your database; right side (target) to your database project.  NOTE: reference your local server as '.', not with your machine name.  This so your teammates can use the compare file as is - it will persist.
      * Hit compare.
-     * Update your database project.
+     * Update your database project (adding to it any tables that may already exist in your database).
      * Close it, saving changes/settings.
 * Copy the `DatabaseMigration` project into your solution.
 * Reference `DatabaseMigration` from your Service.

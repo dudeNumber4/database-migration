@@ -4,6 +4,7 @@
 $global:SourceDacPath = ''
 $global:TargetDacPath = ''
 
+# :Configure: Match this with your database project/database name
 $global:DatabaseProjectName = ''
 $global:DatabaseProjRootPath = ''
 $global:SolutionRootDir = ''
