@@ -194,13 +194,15 @@ A system for automating the propogation of database changes throughout all dev/s
 * Ensure the new column was added to the table.
 * Create 2 scripts in the AdHoc directory by right clicking on the AdHoc folder in the database project.  They can both have as their command: `insert Entity values ('console test', 'console test')`
 * Run `CommitDatabaseScripts`
-  * Ensure console output reports that the new scripts were added to resource.
-  * Ensure that the files you created and the project references to them have been cleaned up.
+  * Ensure console output reports that the new scripts were added as resource files.
+  * Ensure that the files you created and the project references to them (in the database project) have been cleaned up.
+  * Ensure that both files were added to DatabaseMigration\RuntimeScripts
+  * Ensure that bothe files' properties are build action embedded resource, copy if newer.
 * Launch the service.
-  * Ensure it reports that it ran the 2 new scripts (#3 & 4).
+  * Ensure it reports that it skipped script #2 (already applied).
   * Ensure Entity table has the rows added by the scripts, and that the journal contains 2 new entries recording script them.
-  * Ensure the journal table ScriptApplied column shows the script.
 * `drop table MigrationsJournal`
+* `truncate table Entity`
 * `alter table Entity drop column NewColumn`
 * Launch the service.
   * Ensure it recreates the MigrationsJournal table, re-adds column NewColumn to Entity, and adds the 2 rows to Entity.

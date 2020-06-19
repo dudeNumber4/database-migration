@@ -180,6 +180,8 @@ function ProcessAdHocDirectory {
                 Write-Host 'Error processing AdHoc directory; exiting.'
                 exit
             }
+            Start-Sleep -Milliseconds 1250 # GOL, if there are multiples, they stomp on each other in CommitScriptAsResource
+            Write-Host "Removing $_.FullName from database project." -ForegroundColor DarkGreen
             # delete the file
             Remove-Item $_.FullName
             # Remove the item from the project if present.  Active project has been enforced to be the database project.
