@@ -4,7 +4,7 @@
 • Every reference to "$dte" is a dependency on visual studio.  The whole thing could be independent of vs, but it's much easier this way and more convenient to run it.
 #>
 
-Import-Module "$PSScriptRoot\Common.psm1" -Force
+Import-Module "$PSScriptRoot\Common.psm1" #-Force
 
 # Set after determining solution root
 $global:NextScriptNumber = 0

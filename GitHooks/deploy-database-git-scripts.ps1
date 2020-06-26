@@ -132,6 +132,7 @@ if ($null -ne $msBuildPath) {
     Write-Host 'Searching for sqlproj...  If you want to speed this up, search for "sqlProjSearchRoot."'
     $sqlProjFilePath = FindFile (Get-Location).Path '*.sqlproj' $sqlProjSearchRoot
     if ($null -ne $sqlProjFilePath) {
+        Write-Host 'Found sqlproj'
         Write-Host 'Building database project...'
         BuildDacpac $msBuildPath $sqlProjFilePath | Write-Host
     } else {
