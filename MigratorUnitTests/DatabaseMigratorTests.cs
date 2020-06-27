@@ -17,6 +17,7 @@ namespace MigratorUnitTests
         private DatabaseMigrator _databaseMigrator;
         private IConfigurationRoot _config;
         private string _connectionString;
+        private string _tempScriptPath;
 
         public DatabaseMigratorTests()
         {
@@ -45,30 +46,29 @@ namespace MigratorUnitTests
         {
             _databaseMigrator = Substitute.For<DatabaseMigrator>(TestLogger.Instance());
 
-            // Return a script that simply creates a table.  Give it a high number/key so as to not clash with any existing scripts.  Yes, the test has way too much knowledge of the innards.
-            _databaseMigrator.GetScripts().Returns(Enumerable.Repeat((DatabaseMigratorTestScripts.TestScriptNumber, DatabaseMigratorTestScripts.CreateTableScript), 1));
             var JOURNAL_TABLE_SCRIPT = @$"..\..\..\..\{nameof(DatabaseMigration)}\RuntimeScripts\1.sql"; // first should be journal table creation script.
             File.Exists(JOURNAL_TABLE_SCRIPT).Should().BeTrue();
+            _tempScriptPath = Path.GetTempFileName();
+            File.WriteAllText(_tempScriptPath, DatabaseMigratorTestScripts.CreateTableScript);
+            // Return a script that simply creates a table.  Give it a high number/key so as to not clash with any existing scripts.  Yes, the test has way too much knowledge of the innards.
+            _databaseMigrator.GetScripts().Returns(Enumerable.Repeat((DatabaseMigratorTestScripts.TestScriptNumber, _tempScriptPath), 1));
             _databaseMigrator.GetJournalTableCreationScript().Returns(File.ReadAllText(JOURNAL_TABLE_SCRIPT));
         }
 
         private bool TableExists(string tableExistsScript)
         {
             var result = false;
-            SqlConnection con = null;
             try
             {
-                using (con = new SqlConnection(_connectionString))
+                using (var con = new SqlConnection(_connectionString))
                 {
                     using (var cmd = new SqlCommand(tableExistsScript, con))
                     {
                         con.Open();
                         using (var reader = cmd.ExecuteReader())
+                        if (reader.Read())
                         {
-                            if (reader.Read())
-                            {
-                                result = reader.HasRows;
-                            }
+                            result = reader.HasRows;
                         }
                     }
                 }
@@ -110,6 +110,10 @@ namespace MigratorUnitTests
         public void Dispose()
         {
             _databaseMigrator?.Dispose();
+            if (File.Exists(_tempScriptPath))
+            {
+                File.Delete(_tempScriptPath);
+            }
         }
 
     }
