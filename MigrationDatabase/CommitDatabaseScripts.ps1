@@ -8,8 +8,8 @@ Import-Module "$PSScriptRoot\Common.psm1" #-Force
 
 # Set after determining solution root
 $global:NextScriptNumber = 0
-# :Configure: Set exact path to DatabaseMigration proj
-$global:ServiceProjFilePath = 'C:\source\database-migration\DatabaseMigration\DatabaseMigration.csproj'
+# :Configure: Set/ensure relative path from solution root dir to DatabaseMigration proj
+$global:ServiceProjFilePath = '\DatabaseMigration\DatabaseMigration.csproj'
 
 <#
 .DESCRIPTION
@@ -116,7 +116,7 @@ function CommitScriptAsResource([string] $initialScriptPath) {
         $true
     }
     catch {
-        Write-Host "Error committing script: $_.  Note that your script may have moved to the RuntimeScripts directory as '$newFileName'."
+        Write-Host "Error committing script: $_.  Note that your script may have moved to the RuntimeScripts directory as '$newFilePath'."
         $false
     }
     finally {
@@ -182,7 +182,7 @@ function ProcessAdHocDirectory {
                 exit
             }
             Start-Sleep -Milliseconds 1250 # GOL, if there are multiples, they stomp on each other in CommitScriptAsResource
-            Write-Host "Removing $_.FullName from database project." -ForegroundColor DarkGreen
+            Write-Host "Removing Ad-Hoc file $_ from database project." -ForegroundColor DarkGreen
             # delete the file
             Remove-Item $_.FullName
             # Remove the item from the project if present.  Active project has been enforced to be the database project.
@@ -205,6 +205,7 @@ function ProcessAdHocDirectory {
 # MAIN
 EnsureDatabaseProjectSelected
 SetProjectBasedGlobals
+$global:ServiceProjFilePath = "$global:SolutionRootDir$global:ServiceProjFilePath"
 EnsureExpectedDirectoriesExist
 
 if (TestScriptRelatedPaths) { # else error written to console

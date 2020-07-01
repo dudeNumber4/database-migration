@@ -155,7 +155,9 @@ function EnsureInsideRepo {
 Remove $line (entire) from file at $path
 #>
 function RemoveLine($line, $path) {
-    (Get-Content -Path $path) | Where-Object { $_ -ne $line } | Set-Content -Path $path
+    if (Test-Path $path) {
+        (Get-Content -Path $path) | Where-Object { $_ -ne $line } | Set-Content -Path $path
+    }
 }
 
 <#
