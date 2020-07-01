@@ -113,6 +113,7 @@ function CommitScriptAsResource([string] $initialScriptPath) {
         $scriptFileName = [System.IO.Path]::GetFileName($newFilePath)
         AppendResourceElement $doc $parentElem $scriptFileName
         $doc.Save($global:ServiceProjFilePath) > $null
+        $global:NextScriptNumber = $global:NextScriptNumber + 1
         $true
     }
     catch {
@@ -193,7 +194,6 @@ function ProcessAdHocDirectory {
                 # Issue save command to remove the above file reference from the database project file.
                 $dte.ExecuteCommand("File.SaveAll")
             }
-            $global:NextScriptNumber = $global:NextScriptNumber + 1
         }
     } 
     catch {
