@@ -152,6 +152,14 @@ function EnsureInsideRepo {
 
 <#
 .DESCRIPTION
+Remove $line (entire) from file at $path
+#>
+function RemoveLine($line, $path) {
+    (Get-Content -Path $path) | Where-Object { $_ -ne $line } | Set-Content -Path $path
+}
+
+<#
+.DESCRIPTION
 Add content to the beginning of a config file.
 #>
 function AddConfigFileEntry($configFilePath, $content) {
@@ -179,6 +187,8 @@ function WriteBranchHookScript {
     }
     Set-Content -Path $CreateBranchHookScriptPath $CreateBranchHookScript
 }
+
+RemoveLine '*.resources merge=database-resource-script-merge-driver' '.gitattributes' # remove previously configured merge driver if present
 
 # Assume this script is running from repo root/GitHooks; set location to parent (back to root).
 Set-Location (Get-Item $PSCommandPath).Directory.Parent.FullName
