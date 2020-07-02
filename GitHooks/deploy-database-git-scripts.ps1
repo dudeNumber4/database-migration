@@ -1,3 +1,41 @@
+# Add to gitignore database project files
+$GitIgnorePath = './.gitignore'
+$GitIgnoreContent = @'
+# database project files
+*.dbmdl
+*.jfm
+*.refactorlog
+*.dacpac
+
+'@
+# end gitignore contents
+
+############################################ Create Branch Hook
+$CreateBranchHookPath = './.git/hooks/post-checkout'
+$CreateBranchHook = @'
+#!/bin/bash
+
+# This hook was written by deploy-database-git-scripts.ps1
+
+# checkout is a file checkout – do nothing
+if [ "$3" == "0" ]; then exit; fi
+
+BRANCH_NAME=$(git symbolic-ref --short -q HEAD)
+NUM_CHECKOUTS=`git reflog --date=local | grep -o ${BRANCH_NAME} | wc -l`
+
+#if the refs of the previous and new heads are the same.
+#AND the number of checkouts equals one, a new branch has been created
+# UNLESS a branch with the same name has been created previously.
+if [ "$1" == "$2"  ] && [ ${NUM_CHECKOUTS} -eq 1 ]; then
+    pwsh "./GitHooks/CreateBranchHook.ps1"
+fi
+'@
+
+$LegacyCreateBranchHookScriptPath = './CreateBranchHook.ps1'
+$CreateBranchHookScriptPath = './GitHooks/CreateBranchHook.ps1'
+$CreateBranchHookScript = @'
+# This file was written by deploy-database-git-scripts.ps1
+
 <#
 .DESCRIPTION
 Finds a file located within the VS root dir
@@ -94,6 +132,7 @@ if ($null -ne $msBuildPath) {
     Write-Host 'Searching for sqlproj...  If you want to speed this up, search for "sqlProjSearchRoot."'
     $sqlProjFilePath = FindFile (Get-Location).Path '*.sqlproj' $sqlProjSearchRoot
     if ($null -ne $sqlProjFilePath) {
+        Write-Host 'Found sqlproj'
         Write-Host 'Building database project...'
         BuildDacpac $msBuildPath $sqlProjFilePath | Write-Host
     } else {
@@ -102,3 +141,67 @@ if ($null -ne $msBuildPath) {
 } else {
     Write-Host "Unable to set database state: can't find msbuild" -ForegroundColor Red
 }
+'@
+
+function EnsureInsideRepo {
+    if ($null -eq (Get-ChildItem -Directory '.git')) {
+        Write-Host "It doesn't look like you're in a git repo." -ForegroundColor Red
+        Exit
+    }
+}
+
+<#
+.DESCRIPTION
+Remove $line (entire) from file at $path
+#>
+function RemoveLine($line, $path) {
+    if (Test-Path $path) {
+        (Get-Content -Path $path) | Where-Object { $_ -ne $line } | Set-Content -Path $path
+    }
+}
+
+<#
+.DESCRIPTION
+Add content to the beginning of a config file.
+#>
+function AddConfigFileEntry($configFilePath, $content) {
+    if (Test-Path $configFilePath) {
+        $existingContent = Get-Content -Path $configFilePath -Delimiter '\0'
+    }
+    if ($null -eq $existingContent) {
+        # add the file; it doesn't exist (common for no .gitattributes)
+        Set-Content -Path $configFilePath $content
+        Return
+    }
+    if (-not ($existingContent.Contains($content))) {
+        # Add to head of file
+        Set-Content -Path $configFilePath "$content$([System.Environment]::NewLine)$existingContent"
+    }
+}
+
+<#
+.DESCRIPTION
+Create the hook script that is invoked upon branch creation.
+#>
+function WriteBranchHookScript {
+    if (Test-Path $LegacyCreateBranchHookScriptPath) {
+        Remove-Item $LegacyCreateBranchHookScriptPath
+    }
+    Set-Content -Path $CreateBranchHookScriptPath $CreateBranchHookScript
+}
+
+RemoveLine '*.resources merge=database-resource-script-merge-driver' '.gitattributes' # remove previously configured merge driver if present
+
+# Assume this script is running from repo root/GitHooks; set location to parent (back to root).
+Set-Location (Get-Item $PSCommandPath).Directory.Parent.FullName
+
+# These might fail
+EnsureInsideRepo
+# Add the branch hook file (the part that triggers the hook when creating a new branch; not the actual hook script) at the root of the repo.
+# Overwrite any previous version.
+Set-Content -Path $CreateBranchHookPath $CreateBranchHook
+
+AddConfigFileEntry $GitIgnorePath $GitIgnoreContent
+WriteBranchHookScript
+
+Write-Host 'Git configured.'

@@ -6,7 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Resources;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
 using DatabaseMigration.Utils;
@@ -21,21 +20,19 @@ namespace DatabaseMigration
 
     /// <summary>
     /// Manages migration script execution.
-    /// <see cref="SqlCmdResources"/><see cref="_resourceFilePath"/> is the resource containing migration scripts.
+    /// <see cref="_scriptFolderPath"/> is the folder containing migration scripts.
     /// Using basic ADO to connect to database to keep simple; only one table and a few columns to interact with, and we are doing this in a context where DI isn't even up and running.
     /// </summary>
-    [SuppressMessage("Globalization", "CA1305", Justification="I don'need provider here")]
-    [SuppressMessage("Globalization", "CA1304", Justification="I don'tneed provider here")]
+    [SuppressMessage("Globalization", "CA1305", Justification="I don't need provider here")]
+    [SuppressMessage("Globalization", "CA1304", Justification="I don't need provider here")]
     [SuppressMessage("Security Category", "CA2100", Justification = "SQL Statements are generated within")]
     public class DatabaseMigrator : DirectDatabaseConnection, IDatabaseMigrator
     {
 
         /// <summary>
-        /// Resource file copied to output.
-        /// This could be the more readable .resx file, but .Net core has made dealing with those a flat-out nightmare.  See ReadMe in database project for more.
+        /// Folder where scripts live.
         /// </summary>
-        private string _resourceFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "DatabaseMigrationScripts.resources");
-        private Server _serverConnection;
+        private string _scriptFolderPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "RuntimeScripts");
 
         public DatabaseMigrator(IStartupLogger log)
             : base(log)
@@ -43,7 +40,7 @@ namespace DatabaseMigration
         }
 
         /// <summary>
-        /// Used to execute scripts in our DatabaseScripts resource
+        /// Used to execute scripts from our known location
         /// </summary>
         /// <param name="connectionStr">Connection String.</param>
         public void PerformMigrations(string connectionStr)
@@ -60,22 +57,14 @@ namespace DatabaseMigration
         }
 
         /// <summary>
-        /// Get scripts from the script resource file.
+        /// Get file names from known folder.
         /// </summary>
-        /// <returns>key name, resource value</returns>
-        public virtual IEnumerable<(string name, string value)> GetResources()
+        /// <returns>fileNumber, filePath</returns>
+        public virtual IEnumerable<(int fileNumber, string filePath)> GetScripts()
         {
-            IEnumerable<DictionaryEntry> GetResources()
+            foreach (var tuple in GetOrderedScripts())
             {
-                foreach (var entry in GetOrderedScripts())
-                {
-                    yield return entry;
-                }
-            }
-
-            foreach (DictionaryEntry item in GetResources())
-            {
-                yield return ((string)item.Key, (string)item.Value);
+                yield return tuple;
             }
         }
 
@@ -85,104 +74,77 @@ namespace DatabaseMigration
         /// <returns>x</returns>
         public virtual string GetJournalTableCreationScript()
         {
-            var firstResource = GetOrderedScripts(false).FirstOrDefault();
-            return firstResource.Key == null ? string.Empty : (string)firstResource.Value;
+            var firstScript = GetOrderedScripts(false).FirstOrDefault();
+            return firstScript.filePath == null ? string.Empty : File.ReadAllText(firstScript.filePath);
         }
 
         private void RunMigrations()
         {
-            using (var journalTable = new JournalTable(_connectionString, _log, GetJournalTableCreationScript(), _failedScripts))
+            using var journalTable = new JournalTable(_connectionString, _log, GetJournalTableCreationScript(), _serverConnection, _failedScripts);
+            if (journalTable.EnsureTableExists())
             {
-                if (journalTable.EnsureTableExists())
+                try
                 {
-                    try
+                    foreach ((int fileNumber, string filePath) script in GetScripts())
                     {
-                        foreach ((string name, string value) resource in GetResources())
+                        if (journalTable.TryAcquireLockFor((script.fileNumber, script.filePath)))
                         {
-                            if (journalTable.TryAcquireLockFor(resource))
-                            {
-                                ExecuteScript(resource.name, resource.value);
-                                journalTable.RecordScriptInJournal(resource, false);
-                            }
-                            else
-                            {
-                                _log.LogInfo($"Skipping script [{resource.name}]; already executed or may be in process from another client.");
-                            }
+                            ExecuteScript(script.fileNumber, File.ReadAllText(script.filePath));
+                            journalTable.RecordScriptInJournal(script, false);
+                        }
+                        else
+                        {
+                            _log.LogInfo($"Skipping script [{script.fileNumber}]; already executed or may be in process from another client.");
                         }
                     }
-                    catch (FormatException ex)
-                    {
-                        _log.LogInfo($"Error encountered during processing of script resources.  Resource file may be corrupted: {ex.Message}");
-                    }
                 }
-                else
+                catch (FormatException ex)
                 {
-                    _log.LogInfo($"Unable to create/ensure presence of table {_journalTableStructure.TableName}");
-                }
-            }
-        }
-
-        private bool ExecuteScript(string scriptName, string script)
-        {
-            AssertOpenConnection();
-            try
-            {
-                _serverConnection.ConnectionContext.ExecuteNonQuery(script, ExecutionTypes.ContinueOnError);
-                return true;
-            }
-            catch (ExecutionFailureException ex)
-            {
-                _failedScripts.Add(scriptName, $"{ex.Message} {ex.InnerException.Message}");
-                return false;
-            }
-            catch (SqlException e)
-            {
-                _failedScripts.Add(scriptName, e.Message);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Not all keys will be represented as numbers.
-        /// </summary>
-        private IEnumerable<DictionaryEntry> GetNumericResources()
-        {
-            using (var reader = new ResourceReader(_resourceFilePath))
-            {
-                foreach (DictionaryEntry entry in reader)
-                {
-                    if (int.TryParse((string)entry.Key, out var number))
-                    {
-                        yield return entry;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get resource keys in order.
-        /// </summary>
-        /// <returns>Materialized list because it must be ordered.</returns>
-        private List<DictionaryEntry> GetOrderedScripts(bool skipFirstScript = true)
-        {
-            // The first script should always be the journal table creation script.  CommitDatabaseScripts.ps1 back in the database project should've enforced that.
-            var result = GetNumericResources().OrderBy(de => Convert.ToInt32(de.Key)).ToList();
-            if (skipFirstScript)
-            {
-                if (result.Count >= 2)
-                {
-                    return result.Skip(1).ToList();
-                }
-                else
-                {
-                    return new List<DictionaryEntry>();
+                    _log.LogInfo($"Error encountered during processing of script: {ex.Message}");
                 }
             }
             else
             {
-                return result;
+                _log.LogInfo($"Unable to create/ensure presence of table {_journalTableStructure.TableName}");
             }
         }
+
+        private bool ExecuteScript(int scriptNumber, string script)
+        {
+            AssertOpenConnection();
+            // We need ContinueOnError so we can continue after failed 'go' segments.  But the price we pay is no error message.
+            int result = _serverConnection.ConnectionContext.ExecuteNonQuery(script, ExecutionTypes.ContinueOnError);
+            if (result == 0)
+            {
+                _failedScripts.Add(scriptNumber, "Script execution failure");
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Not all file names will be represented as numbers.
+        /// Correction; they should all be, but this code can remain.
+        /// </summary>
+        private IEnumerable<(int fileNumber, string filePath)> GetNumericScripts()
+        {
+            foreach (string file in Directory.EnumerateFiles(_scriptFolderPath))
+            {
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                if (int.TryParse(fileName, out var number))
+                {
+                    yield return (number, file);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get file names in order.
+        /// </summary>
+        /// <returns>Materialized list because it must be ordered.</returns>
+        private IEnumerable<(int fileNumber, string filePath)> GetOrderedScripts(bool skipFirstScript = true) =>
+            // The first script should always be the journal table creation script.  CommitDatabaseScripts.ps1 back in the database project should've enforced that.
+            GetNumericScripts().Skip(skipFirstScript ? 1 : 0).OrderBy(tuple => tuple.fileNumber);
 
         private void ConfigureConnections(string connectionStr)
         {

@@ -11,6 +11,18 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MigratorUnitTests", "Migrat
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DatabaseMigration", "DatabaseMigration\DatabaseMigration.csproj", "{52DB79DD-7634-449B-A2E4-542D68A18B9A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionItems", "{3E1BABC4-2B31-4C07-982B-95872733F01F}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHooks", "GitHooks", "{C5BF98FE-55BD-4CA3-92D3-F801E06C7EAB}"
+	ProjectSection(SolutionItems) = preProject
+		GitHooks\deploy-database-git-scripts.ps1 = GitHooks\deploy-database-git-scripts.ps1
+		GitHooks\ReadMe.md = GitHooks\ReadMe.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

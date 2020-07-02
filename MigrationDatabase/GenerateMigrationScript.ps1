@@ -7,7 +7,6 @@ If approved, developer will run CommitDatabaseScripts to finish the process.
 
 Import-Module "$PSScriptRoot\Common.psm1" #-Force
 
-#$global:MSBuildPath = ''
 $global:SQLPackagePath = ''
 $global:InitialHostLocation = Get-Location # We will have to reset to our initial location
 $global:ScriptOutputPath = ''
@@ -141,7 +140,7 @@ function PrependCommentTo([string] $path) {
         '• You could commit the changes upon the agreement that a teammate will pull the latest changes, run the service and verify that the script ran (accepting that there is a possibility you may have to undo the recent changes - see ReadMe).' + $([System.Environment]::NewLine) +
         '• Variation of above:' + $([System.Environment]::NewLine) +
         '  • Ensure existing changes are git-committed including database object changes.' + $([System.Environment]::NewLine) +
-        '  • Commit this script to the resource file (CommitDatabaseScript.ps).' + $([System.Environment]::NewLine) +
+        '  • Commit this script as a resource file (CommitDatabaseScript.ps).' + $([System.Environment]::NewLine) +
         '  • Drop all tables in your local database.' + $([System.Environment]::NewLine) +
         '  • Run service/tests (all scripts including this new one applied from scratch).' + $([System.Environment]::NewLine) +
         '• If all OK, (optionally remove these comments), save/close this file and run CommitDatabaseScript.ps.  If you are prompted by visual studio telling you that the file encoding has changed (which can happen if you copy/paste into another format); DO NOT SAVE.' + $([System.Environment]::NewLine) +
