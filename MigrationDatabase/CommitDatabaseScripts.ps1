@@ -8,8 +8,7 @@ Import-Module "$PSScriptRoot\Common.psm1" #-Force
 
 # Set after determining solution root
 $global:NextScriptNumber = 0
-# :Configure: Set/ensure relative path from solution root dir to DatabaseMigration proj
-$global:ServiceProjFilePath = '\DatabaseMigration\DatabaseMigration.csproj'
+$global:ServiceProjFilePath = "$global:DatabaseMigrationRoot\DatabaseMigration.csproj"
 
 <#
 .DESCRIPTION

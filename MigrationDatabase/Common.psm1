@@ -12,8 +12,9 @@ $global:BuildOutputDir = ''
 $global:MigrationScriptPath = ''
 $global:AdHocScriptPath = ''
 $global:ScriptFolderName = 'RuntimeScripts'
-# :Configure: set/confirm your service name in the path portion below.
-$global:ScriptFolderPath = "DatabaseMigration\$global:ScriptFolderName"
+# :Configure: set/confirm your path to the DatabaseMigration project from solution root (leave leading forward slash).
+$global:DatabaseMigrationRoot = '/DatabaseMigration'
+$global:ScriptFolderPath = "$global:DatabaseMigrationRoot\$global:ScriptFolderName"
 $global:ResourceFolderPath = ''
 
 function TestProjectPaths {
