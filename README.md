@@ -46,7 +46,7 @@ A system for automating the propogation of database changes throughout all dev/s
 
 ### Usage
 * Here are the 2 main use cases:
-  * Letting it help you with scripts.
+  * Letting it help you with scripts. (In addition to this section, see next section below).
     * Upon branch creation, the current database state is captured (see section Database State for more).
     * Make your changes via code, directly in your database, or in the database project.
       * If you make changes in code or in the database, update the database project:
@@ -83,6 +83,19 @@ A system for automating the propogation of database changes throughout all dev/s
 * Testing
   * Sometimes the generated script will fail on other instances, e.g., you added a non-nullable column to a table that contains existing data.
   * If you add an Ad-Hoc script, it's assumed you've tested it.  If you generated a script, ensure to follow the advice/instructions about testing it that appear in the script.
+
+#### I have a list of changes in mind, how can I simply generate a script for them?
+Regardless of where you are in the process of making a change (perhaps you made some changes, them backed them out), you have a database instance in a given state, you know you need to make a given set of changes (or even just a single), and you want to generate a script.
+
+Let's assume that your `dev` database is in the starting state.  Here are the steps:
+* Open `UpdateProject.scmp`.
+* Set the left side to connect to `dev`, set the right side to the database project.
+* Click Update: this will make the database project match the state that dev is in.
+* In package manager explorer, run `./MigrationDatabase/UpdateDatabaseStateFile.ps1`.  This sets the database state start point (the same thing that happens when you create a new branch).
+* Make the necessary changes in your local database (or in the database project).
+* If you made the changes in your local database, you will need to transfer them to the database project: Open `UpdateProject.scmp`, set the left side to your local database.  Click Update to update the database project.
+* In package manager explorer, run `./MigrationDatabase/GenerateMigrationScript.ps1`
+* Review the script; it should contain all the actions necessary to make the changes.  If it looks good, run `./MigrationDatabase/CommitDatabaseScripts.ps1`
 
 ##### Errors
 * Startup.log in the same directory as the service will contain some error indications.
