@@ -156,7 +156,11 @@ Remove $line (entire) from file at $path
 #>
 function RemoveLine($line, $path) {
     if (Test-Path $path) {
-        (Get-Content -Path $path) | Where-Object { $_ -ne $line } | Set-Content -Path $path
+        $newContent = (Get-Content -Path $path) | Where-Object { $_ -ne $line }
+        if ($null -eq $newContent) {
+            $newContent = '' # won't write null
+        }
+        $newContent | Set-Content -Path $path
     }
 }
 
@@ -190,10 +194,10 @@ function WriteBranchHookScript {
     Set-Content -Path $CreateBranchHookScriptPath $CreateBranchHookScript
 }
 
-RemoveLine '*.resources merge=database-resource-script-merge-driver' '.gitattributes' # remove previously configured merge driver if present
-
 # Assume this script is running from repo root/GitHooks; set location to parent (back to root).
 Set-Location (Get-Item $PSCommandPath).Directory.Parent.FullName
+
+RemoveLine '*.resources merge=database-resource-script-merge-driver' '.gitattributes' # remove previously configured merge driver if present
 
 # These might fail
 EnsureInsideRepo
