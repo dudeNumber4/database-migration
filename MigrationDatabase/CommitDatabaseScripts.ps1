@@ -1,5 +1,5 @@
 <#
-• Looks for scripts in Migrations & AdHoc directory to add to script folder in the service and as an embedded resource to the service project (see $global:ServiceProjFilePath).
+• Looks for scripts in Migrations & AdHoc directory to add to the runtime script folder in the service (see $global:ServiceProjFilePath).
 • Scripts in AdHoc will have their project reference deleted after processing if they were added via project right-click.
 • Every reference to "$dte" is a dependency on visual studio.  The whole thing could be independent of vs, but it's much easier this way and more convenient to run it.
 #>
@@ -8,6 +8,7 @@ Import-Module "$PSScriptRoot\Common.psm1" #-Force
 
 # Set after determining solution root
 $global:NextScriptNumber = 0
+# :Configure: See what DatabaseMigrationRoot is set to in common.psm1.  Ensure this path to the actual migration service project (the project that owns the "RuntimeScripts" directory) will be correct.
 $global:ServiceProjFilePath = "$global:DatabaseMigrationRoot\DatabaseMigration.csproj"
 
 <#
