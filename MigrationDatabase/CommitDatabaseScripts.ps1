@@ -8,8 +8,8 @@ Import-Module "$PSScriptRoot\Common.psm1" #-Force
 
 # Set after determining solution root
 $global:NextScriptNumber = 0
-# :Configure: See what DatabaseMigrationRoot is set to in common.psm1.  Ensure this path to the actual migration service project (the project that owns the "RuntimeScripts" directory) will be correct.
-$global:ServiceProjFilePath = "$global:DatabaseMigrationRoot\DatabaseMigration.csproj"
+# :Configure: path to service csproj that contains migration runtime files relative to DatabaseMigrationRoot which is the folder named "DatabaseMigration"
+$global:ServiceProjFilePath = "$global:DatabaseMigrationRoot\..\DatabaseMigration.csproj"
 
 <#
 .DESCRIPTION
@@ -44,7 +44,34 @@ function TestScriptRelatedPaths {
 
 <#
 .DESCRIPTION
-Returns <ItemGroup> parent that holds references to our script files in the project file.
+Similar to GetScriptItemGroup, but gets a different ItemGroup parent element; the one that's (sometimes?) necessary in order for the project to not
+show a phantom item in the solution explorer.  Also, this element seems to be necessary in order to preclude the file from being part of compilation
+#>
+function GetRemoveItemGroup([System.Xml.XmlDocument] $doc) {
+    if ($null -eq $doc) {
+        throw 'Expected open project document prior to finding an element.'
+    }
+
+    $errMsg = "Unable to find expected initial script in project XML under 'Remove' items."
+    $node = $doc.SelectSingleNode('descendant::ItemGroup/None[@Remove="DatabaseMigration\RuntimeScripts\1.sql"]')
+    if ($null -eq $node) {
+        throw $errMsg
+    } else {
+        $result = $node.ParentNode
+        if ($null -eq $result) {
+            throw $errMsg
+        }
+        elseif ($result -is [Array]) {
+            $result[0]
+        } else {
+            $result
+        }
+    }
+}
+
+<#
+.DESCRIPTION
+Returns <ItemGroup> parent that holds references to our script files in the project file.  Very similar to GetRemoveItemGroup
 #>
 function GetScriptItemGroup([System.Xml.XmlDocument] $doc) {
     $doc.Load($global:ServiceProjFilePath) > $null
@@ -52,8 +79,8 @@ function GetScriptItemGroup([System.Xml.XmlDocument] $doc) {
         throw 'Failed to load project file.'
     }
     $errMsg = 'Unable to find expected initial script'
-    #$node = $doc.SelectSingleNode('/Project/ItemGroup/EmbeddedResource[@Include="RuntimeScripts\1.sql"]') works, but more specific
-    $node = $doc.SelectSingleNode('descendant::ItemGroup/EmbeddedResource[@Include="RuntimeScripts\1.sql"]')
+    #$node = $doc.SelectSingleNode('/Project/ItemGroup/EmbeddedResource[@Include="DatabaseMigration\RuntimeScripts\1.sql"]') works, but more specific
+    $node = $doc.SelectSingleNode('descendant::ItemGroup/EmbeddedResource[@Include="DatabaseMigration\RuntimeScripts\1.sql"]')
     if ($null -eq $node) {
         throw $errMsg
     } else {
@@ -81,13 +108,31 @@ function CopyScript([string] $scriptPath) {
 
 <#
 .DESCRIPTION
-We've found our parent ItemGroup in the project file; append our new element referencing our script.
+Similar to AppendResourceElement, just adds to different element.
+#>
+function AppendRemoveElement([System.Xml.XmlDocument] $doc, [System.Xml.XmlElement] $parent, [string] $scriptFileName) {
+    try {
+        # None Remove="DatabaseMigration\RuntimeScripts\n.sql"
+        $noneElem = $doc.CreateNode([System.Xml.XmlNodeType]::Element, 'None', [System.string]::Empty)
+        $removeAttr = $doc.CreateAttribute('Remove')
+        $removeAttr.Value = "DatabaseMigration\$global:ScriptFolderName\$scriptFileName"
+        $noneElem.Attributes.Append($removeAttr) > $null
+        $parent.AppendChild($noneElem) > $null
+    }
+    catch {
+        throw "Error adding script as 'removed' item to project: $_"
+    }
+}
+
+<#
+.DESCRIPTION
+We've found our parent ItemGroup in the project file; append our new element referencing our script.  Very similar to AppendRemoveElement.
 #>
 function AppendResourceElement([System.Xml.XmlDocument] $doc, [System.Xml.XmlElement] $parent, [string] $scriptFileName) {
     try {
         $scriptResourceElem = $doc.CreateNode([System.Xml.XmlNodeType]::Element, 'EmbeddedResource', [System.string]::Empty)
         $includeAttr = $doc.CreateAttribute('Include')
-        $includeAttr.Value = "$global:ScriptFolderName\$scriptFileName"
+        $includeAttr.Value = "DatabaseMigration\$global:ScriptFolderName\$scriptFileName"
         $scriptResourceElem.Attributes.Append($includeAttr) > $null
         
         $copyElem = $doc.CreateNode([System.Xml.XmlNodeType]::Element, 'CopyToOutputDirectory', [System.string]::Empty)
@@ -109,15 +154,17 @@ function CommitScriptAsResource([string] $initialScriptPath) {
     try {
         $newFilePath = CopyScript $initialScriptPath
         $doc = New-Object -TypeName 'System.Xml.XmlDocument'
-        $parentElem = GetScriptItemGroup $doc
         $scriptFileName = [System.IO.Path]::GetFileName($newFilePath)
+        $parentElem = GetScriptItemGroup $doc
         AppendResourceElement $doc $parentElem $scriptFileName
+        $parentElem = GetRemoveItemGroup $doc
+        AppendRemoveElement $doc $parentElem $scriptFileName
         $doc.Save($global:ServiceProjFilePath) > $null
         $global:NextScriptNumber = $global:NextScriptNumber + 1
         $true
     }
     catch {
-        Write-Host "Error committing script: $_.  Note that your script may have moved to the RuntimeScripts directory as '$newFilePath'."
+        Write-Host "Error committing script: $_.  Note that your script may have moved to the RuntimeScripts directory as '$newFilePath' and a reference to it may have been added to your service project."
         $false
     }
     finally {

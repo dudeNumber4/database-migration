@@ -12,8 +12,9 @@ $global:BuildOutputDir = ''
 $global:MigrationScriptPath = ''
 $global:AdHocScriptPath = ''
 $global:ScriptFolderName = 'RuntimeScripts'
-# :Configure: set/confirm your path to the DatabaseMigration project from solution root (leave leading forward slash).
-$global:DatabaseMigrationRoot = '/DatabaseMigration'
+# :Configure: set/confirm your path to the DatabaseMigration (service) project from solution root (leave leading forward slash).
+# We have a nested folder by the same name, but when added to another project, the first portion won't be "DatabaseMigration""
+$global:DatabaseMigrationRoot = '/DatabaseMigration/DatabaseMigration'
 $global:ScriptFolderPath = "$global:DatabaseMigrationRoot\$global:ScriptFolderName"
 $global:ResourceFolderPath = ''
 
