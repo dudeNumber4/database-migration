@@ -7,6 +7,14 @@
     <PackageReference Include="System.Data.SqlClient" Version="4.8.0" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="DatabaseMigration\RuntimeScripts\**" />
+    <EmbeddedResource Remove="DatabaseMigration\RuntimeScripts\**" />
+    <None Remove="DatabaseMigration\RuntimeScripts\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="DatabaseMigration\RuntimeScripts\1.sql" />
+  </ItemGroup>
+  <ItemGroup>
     <EmbeddedResource Include="DatabaseMigration\RuntimeScripts\1.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
