@@ -12,7 +12,7 @@ Configures the repo for database migrator usage.
   * Searches for MSBuild and a database project in the repo.  If found, builds the database project and stored the output in the database project root.
   * This is used by the GenerateMigrationScript to compare the state of the database at the beginning of the branch to current state.
 
-### Deploy Script (deploy-database-git-scripts.ps1) Tests
+##### Deploy Script (deploy-database-git-scripts.ps1) manual tests
 * Setup
   * gitignore doesn't contain any of our file types
   * No .git/hooks/post-checkout hook
