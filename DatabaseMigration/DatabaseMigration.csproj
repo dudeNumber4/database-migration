@@ -1,14 +1,43 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Chatham.DatabaseMigration</PackageId>
+    <Authors>ChathamFinancial</Authors>
+    <Company>ChathamFinancial</Company>
+    <Product>DatabaseMigration</Product>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
+    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.0.26</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" Version="150.18208.0" />
     <PackageReference Include="System.Data.SqlClient" Version="4.8.0" />
+    <Content Include="DatabaseMigrationDeliverables.zip">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="RuntimeScripts\1.sql">
+    <Compile Remove="DatabaseMigration\RuntimeScripts\**" />
+    <EmbeddedResource Remove="DatabaseMigration\RuntimeScripts\**" />
+    <None Remove="DatabaseMigration\RuntimeScripts\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="DatabaseMigration\RuntimeScripts\1.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ReadMe.txt">
+      <!--Makes it pop on nuget install (markdown won't work)-->
+      <Pack>true</Pack>
+      <PackagePath>\</PackagePath>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="DatabaseMigration\RuntimeScripts\1.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="pwsh -ExecutionPolicy Bypass -NoProfile -NonInteractive -File ./pre-build.ps1" />
+  </Target>
 </Project>

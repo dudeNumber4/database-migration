@@ -1,52 +1,41 @@
 # Database Change Management System
-A system for automating the propogation of database changes throughout all dev/stage/prod instances.  Database diff scripts are generated between database state changes (`GenerateMigrationScript.ps1`).  Ad-Hoc scripts can be added at any time as well.  `CommitDatabaseScripts.ps1` adds scripts to a known directory for execution at runtime.  Scripts are numbered so that they can be replayed at any time (such as when creating an entirely new database and bringing it up to current state).  The record of scripts that have been executed is kept in a table created by `MigrationsJournal.sql`.  This script is placed as script #1 in the script runtime directory.  At script execution time ("Service" below), this journal is ensured to be present first.  The Service accounts for multiple instances starting up concurrently.
+A system for automating the propogation of database changes throughout all dev/stage/prod instances.  Database diff scripts are generated between database state changes (`GenerateMigrationScript.ps1`).  Ad-Hoc scripts can be added at any time as well.  `CommitDatabaseScripts.ps1` adds scripts to a known directory for execution at runtime.  Scripts are numbered so that they can be replayed at any time (such as when creating an entirely new database and bringing it up to current state).  The record of scripts that have been executed is kept in a table created by `MigrationsJournal.sql`.  This script is placed as script #1 in the script runtime directory.  At script execution time ("Service" below), this journal is ensured to be present first.  The Service accounts for multiple instances starting up concurrently (load balancing).
 
 ## Components
 * Database Project
   * Powershell Scripts
   * Database compare: `UpdateProject.scmp`
-  * Well known "Scripts" and it's 2 subdirectories.
+  * Well known "Scripts" directory and it's 2 subdirectories.
   * `DatabaseState.dacpac`: A file that captures database state represented by the project.
-* DatabaseMigrator: A C# project that processes the scripts.
-  * `DatabaseMigrator.cs`: entry point.
+* A .Net project that processes the scripts.
   * DatabaseMigration/RuntimeScripts: Folder that contains the scripts that originated in the database project.
-* Service: A sample service that utilizes DatabaseMigrator
 * Git Hooks: Refer to the separate ReadMe in the GitHooks folder.
 
 ### Dependencies
 1. sqlpackage.exe: Sql Server Data Tools must be installed.
 2. Visual Studio: The powershell scripts will only work from VS package manager console (see the scripts for details).
 3. Sql Server.  `DatabaseMigrator.cs` assumes Sql Server, but could probably be easily modified for a different database.  There must only be one database to manage in the repository where this is put into place.
-4. Git version (whatever version introduced merge hooks; I really couldn't determine).
-5. Powershell v6 (core) or greater.  To ensure it's installed correctly, open a git bash shell and type `where pwsh`.  If it can't be found; find where it's installed and ensure that's on your path.
+4. Git.
+5. Powershell v6 (core) or greater.  To ensure it's installed correctly, open a git bash shell and type `where pwsh`.  If it can't be found, find where it's installed and ensure that's on your path.
+6. Note: Your database project name and database name are expected to match.  I think this is a good thing.
 
-#### Initial Configuration (i.e., what the nuget package that doesn't yet exist should do)
-* Add a database project to your solution.
-  * Note that the database name is, by default, the same as the database project.  This could probably be detected by the scripts, but is not currently the case; it assumes they are the same.
-  * As such, name the database project to match your database name.  If you don't already have a database, create one with the same name as your database project.
-    * The database name must be consistent across all environments.  I think this is a good thing.
-  * Add all .ps1 and psm1 scripts from the root of this `MigrationDatabase` project to the root of your database project.
-  * Add folders Scripts/AdHoc and Scripts/Migrations to your database project.
-  * Copy `UpdateProject.scmp` from this `MigrationDatabase` to your database project.
-  * In your solution configuration, remove the database project from the build for Debug and Release; it will never need to be part of the normal build process and will fail if called from .net core CLI.
-  * Add a table named MigrationsJournal to your database project.  Set it's (text) definition to this project's table of that name.
+#### Initial Configuration
+* Add migrator code to your service:
+  * `using var migrator = new DatabaseMigrator(new ConsoleStartupLogger());` // YourLogger is a façade to your logging system that implements IStartupLogger
+  * `migrator.PerformMigrations(YOUR_CONNECTION_STRING);`
+* Start/run your service.
+  * Your database should now have a table named MigrationsJournal.  If not, check whatever logging you plugged in above.
 * Set the current state of your database project:
    * Using `UpdateProject.scmp`:
      * Open the file, set the left side to point to your database; right side (target) to your database project.  NOTE: reference your local server as '.', not with your machine name.  This so your teammates can use the compare file as is - it will persist.
      * Hit compare.
-     * Update your database project (adding to it any tables that may already exist in your database).
+       * Note: If you don't care about users, roles, etc., you can go into compare options and deselect those types of objects.
+     * Update your database project (adding to it any objects that may already exist in your database).
      * Close it, saving changes/settings.
-* Copy the `DatabaseMigration` project into your solution.
-* Reference `DatabaseMigration` from your Service.
-* Search the solution for ":Configure:" and change where necessary.
-* Copy `deploy-database-git-scripts.ps1` to the root of your repo.  Open a powershell console and run it: `. ./deploy-database-git-scripts.ps1`
-* Somewhere in your service startup, call DatabaseMigrator.PerformMigrations.
-* Run your service; ensure table MigrationsJournal has been added to your database.
-* Copy this ReadMe into your database project.  Search / Replace "MigrationDatabase" below this point and change to your database project name.
 
 ### Usage
 * Here are the 2 main use cases:
-  * Letting it help you with scripts.
+  * Letting it help you with scripts. (In addition to this section, see next section below).
     * Upon branch creation, the current database state is captured (see section Database State for more).
     * Make your changes via code, directly in your database, or in the database project.
       * If you make changes in code or in the database, update the database project:
@@ -83,6 +72,19 @@ A system for automating the propogation of database changes throughout all dev/s
 * Testing
   * Sometimes the generated script will fail on other instances, e.g., you added a non-nullable column to a table that contains existing data.
   * If you add an Ad-Hoc script, it's assumed you've tested it.  If you generated a script, ensure to follow the advice/instructions about testing it that appear in the script.
+
+#### I have a list of changes in mind, how can I simply generate a script for them?
+Regardless of where you are in the process of making a change (perhaps you made some changes, them backed them out), you have a database instance in a given state, you know you need to make a given set of changes (or even just a single), and you want to generate a script.
+
+Let's assume that your `dev` database is in the starting state.  Here are the steps:
+* Open `UpdateProject.scmp`.
+* Set the left side to connect to `dev`, set the right side to the database project.
+* Click Update: this will make the database project match the state that dev is in.
+* In package manager explorer, run `./MigrationDatabase/UpdateDatabaseStateFile.ps1`.  This sets the database state start point (the same thing that happens when you create a new branch).
+* Make the necessary changes in your local database (or in the database project).
+* If you made the changes in your local database, you will need to transfer them to the database project: Open `UpdateProject.scmp`, set the left side to your local database.  Click Update to update the database project.
+* In package manager explorer, run `./MigrationDatabase/GenerateMigrationScript.ps1`
+* Review the script; it should contain all the actions necessary to make the changes.  If it looks good, run `./MigrationDatabase/CommitDatabaseScripts.ps1`
 
 ##### Errors
 * Startup.log in the same directory as the service will contain some error indications.
@@ -136,49 +138,3 @@ A system for automating the propogation of database changes throughout all dev/s
 
 ##### Merging
 * If your branch and another both add a new script there will be a merge conflict.  You will need to keep one and add the other under a new file name with the next number increment.
-
-###### Manual System Test Plan
-* Beginning state (temp/junk database):
-  * Create below table; no other tables should exist in the database.
-  * `CREATE TABLE [dbo].[Entity]([Id] [int] IDENTITY(1,1) primary key, [Name] [nvarchar](50) NULL)`
-  * [database project]\DatabaseState.dacpac reflects database table state above (run UpdateProject.scmp to compare, update database project, then run script UpdateDatabaseStateFile.ps1)
-	* Directory DatabaseMigration\RuntimeScripts should only have the 1.sql (the initial MigrationsJournal creation script).
-* Make backup of MigrationDatabase\DatabaseState.dacpac to compare against later.
-	* "C:\temp\beginningState.dacpac"
-* Add "NewColumn" (varchar 20) to table directly in Entity.sql
-* Select the service project
-* Run `GenerateMigrationScript`
-	* Ensure it tells you to select the database project
-* Select the database project and Run `GenerateMigrationScript` again
-  * Ensure a script pops up for adding "NewColumn" to table Entity.
-  * Ensure it's in the Scripts\Migrations directory.
-  * Ensure a custom comment is at the top informing you about the script generated.
-  * Ensure the script will "parse" using the toolbar.
-* Close the script and run `GenerateMigrationScript` again.
-  * It should create the same script under a different (guid) name.
-* Close the script file and run `CommitDatabaseScripts`
-  * Ensure it tells you that there are multiple scripts in Migrations folder.
-* Delete one of the guid sql files in the Scripts\Migrations folder and Run `CommitDatabaseScripts` again.
-  * Ensure it named the guid file in DatabaseMigration\RuntimeScripts to 2.sql
-  * Ensure the Scripts/Migrations folder is empty.
-  * Ensure the DatabaseMigration references the new script under the \RuntimeScripts folder
-* Launch the executable; ensure it _doesn't_ report that it skipped script 2.
-* Ensure table `MigrationsJournal` exists with one record (for script 2).
-* Ensure the new column was added to the table.
-* Create 2 scripts in the AdHoc directory by right clicking on the AdHoc folder in the database project.  They can both have as their command: `insert Entity values ('console test', 'console test')`
-* Run `CommitDatabaseScripts`
-  * Ensure console output reports that the new scripts were added as resource files.
-  * Ensure that the files you created and the project references to them (in the database project) have been cleaned up.
-  * Ensure that both files were added to DatabaseMigration\RuntimeScripts
-  * Ensure that bothe files' properties are build action embedded resource, copy if newer.
-* Launch the service.
-  * Ensure it reports that it skipped script #2 (already applied).
-  * Ensure Entity table has the rows added by the scripts, and that the journal contains 2 new entries recording script them.
-* `drop table MigrationsJournal`
-* `truncate table Entity`
-* `alter table Entity drop column NewColumn`
-* Launch the service.
-  * Ensure it recreates the MigrationsJournal table, re-adds column NewColumn to Entity, and adds the 2 rows to Entity.
-* Add another ad-hoc script that will generate an error upon execution.
-* Commit the script, run the service.
-* Ensure the row added to MigrationsJournal shows that the script was attempted, but not completed.

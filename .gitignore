@@ -13,3 +13,4 @@ packages
 .cr
 **/obj/**
 **/bin/**
+*.zip

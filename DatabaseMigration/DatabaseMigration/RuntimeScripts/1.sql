@@ -1,4 +1,5 @@
-﻿if exists
+﻿-- patch if legacy
+if exists
 (
 	select 1 from sys.columns c
 		inner join sys.tables t on c.object_id = t.object_id
@@ -13,7 +14,6 @@ end
 
 go
 
--- Exact representation as the table in the database project
 if not exists(select 1 from sys.tables where [name] = 'MigrationsJournal')
 CREATE TABLE [dbo].[MigrationsJournal] (
     [Id]               INT            IDENTITY (1, 1) NOT NULL,
