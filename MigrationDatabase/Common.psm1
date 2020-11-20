@@ -52,7 +52,7 @@ function SetProjectBasedGlobals {
     $global:SolutionRootDir = [System.IO.Path]::GetDirectoryName($dte.Solution.FullName)
     # :Configure: Ensure the database project is in it's own directory
     $global:BuildOutputDir = "$global:DatabaseProjRootPath\bin\Debug"
-    $global:TargetDacPath = "$global:DatabaseProjRootPath\DatabaseState.dacpac"
+    $global:TargetDacPath = "$global:DatabaseProjRootPath\databaseState.dacpac"
     $global:SourceDacPath = "$global:BuildOutputDir\$global:DatabaseProjectName.dacpac" # see comments in GenerateDiffScript
     $global:MigrationScriptPath = "$global:DatabaseProjRootPath\Scripts\Migrations"
     $global:AdHocScriptPath = "$global:DatabaseProjRootPath\Scripts\AdHoc"
@@ -102,18 +102,20 @@ function BuildDacpac {
         #Write-Host "Building Database Project [$global:DatabaseProjectName] to [$global:BuildOutputDir] using [$global:MSBuildPath]" -ForegroundColor DarkGreen
         #& $global:MSBuildPath /p:OutDir=$global:BuildOutputDir $ProjPath
   
-        # Remove any existing dacpac so we can be assured to have the latest.  If build command fails (flaky), we want the diff script to fail.
-        if (Test-Path $global:SourceDacPath) { # "source": see GenerateDiffScript
-            Remove-Item $global:SourceDacPath
-            Start-Sleep -Milliseconds 50
+        # target path should've been set to what was the previous state of the database.
+        if (-not (Test-Path $global:TargetDacPath)) { # "source": see GenerateDiffScript
+            throw "Expected file [$global:TargetDacPath], to be present, but it's not. That file is should've been generated upon branch creation. Have you run deploy-database-git-scripts.ps1? See GitHooks/ReadMe."
         }
-        # target path has already been set to what was the previous state of the database.
 
         #$dte.ExecuteCommand('Build.BuildOnlyProject') # nope
         # This is supposed to just build the selected project, but it seems to build all.  Sometimes?
         $dte.ExecuteCommand('Build.BuildSelection')
         # The above command is asynchronous.  The subsequent functions rely on the build having finished.  Sleep is easiest; small price to pay.
         Start-Sleep -Seconds 6
+
+        if (-not (Test-Path $global:SourceDacPath)) { # "source": see GenerateDiffScript
+            throw "Expected build to generate file [$global:SourceDacPath], but it did not. That file is necessary in order to generate a diff script."
+        }
     }
     catch {
         Write-Host $_ -ForegroundColor Red

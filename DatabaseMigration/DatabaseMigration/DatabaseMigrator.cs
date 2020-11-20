@@ -112,14 +112,25 @@ namespace DatabaseMigration
         private bool ExecuteScript(int scriptNumber, string script)
         {
             AssertOpenConnection();
-            // We need ContinueOnError so we can continue after failed 'go' segments.  But the price we pay is no error message.
-            int result = _serverConnection.ConnectionContext.ExecuteNonQuery(script, ExecutionTypes.ContinueOnError);
-            if (result == 0)
+            // The overload with `ExecutionTypes.ContinueOnError` is straight-up wrong.  Doc says it should return rows affected, but it returns decreasing negative numbers... at times.
+            void LogError() => _log.LogInfo($"Error executing script {scriptNumber}, see table {_journalTableStructure.TableName}");
+            try
             {
-                _failedScripts.Add(scriptNumber, "Script execution failure");
+                _serverConnection.ConnectionContext.ExecuteNonQuery(script);
+                return true;
+            }
+            catch (ExecutionFailureException ex)
+            {
+                LogError();
+                _failedScripts.Add(scriptNumber, $"{ex.Message} {ex.InnerException.Message}");
                 return false;
             }
-            return true;
+            catch (SqlException e)
+            {
+                LogError();
+                _failedScripts.Add(scriptNumber, e.Message);
+                return false;
+            }
         }
 
         /// <summary>
