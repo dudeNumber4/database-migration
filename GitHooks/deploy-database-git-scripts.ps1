@@ -1,14 +1,5 @@
 # Add to gitignore database project files
 $GitIgnorePath = './.gitignore'
-$GitIgnoreContent = @'
-# database project files
-*.dbmdl
-*.jfm
-*.refactorlog
-*.dacpac
-
-'@
-# end gitignore contents
 
 ############################################ Create Branch Hook
 $CreateBranchHookPath = './.git/hooks/post-checkout'
@@ -166,20 +157,30 @@ function RemoveLine($line, $path) {
 
 <#
 .DESCRIPTION
-Add content to the beginning of a config file.
+Add necessary items to .gitignore.
 #>
-function AddConfigFileEntry($configFilePath, $content) {
-    if (Test-Path $configFilePath) {
-        $existingContent = Get-Content -Path $configFilePath -Delimiter '\0'
+function AddGitIgnoreContent($ignoreFilePath) {
+    $comment = '# database project files'
+    $ignores = '*.dbml', '*.jfm', '*.refactorlog', '*.dacpac'
+    if (Test-Path $ignoreFilePath) {
+        $existingContent = Get-Content -Path $ignoreFilePath -Delimiter '\0'
     }
     if ($null -eq $existingContent) {
         # add the file; it doesn't exist (common for no .gitattributes)
-        Set-Content -Path $configFilePath $content
+        Set-Content -Path $ignoreFilePath $GitIgnoreContent
         Return
     }
-    if (-not ($existingContent.Contains($content))) {
-        # Add to head of file
-        Set-Content -Path $configFilePath "$content$([System.Environment]::NewLine)$existingContent"
+    if (-not ($existingContent.Contains($GitIgnoreContent))) {
+        # Add to head of file those that don't already exist.
+        $ContentToAdd = $comment
+        $ignores | ForEach-Object {
+            if (-not $existingContent.Contains($_)) {
+                $ContentToAdd = "$ContentToAdd$([System.Environment]::Newline)$_"
+            }
+        }
+        if ($ContentToAdd -ne $comment) {
+            Set-Content -Path $ignoreFilePath "$ContentToAdd$([System.Environment]::NewLine)$existingContent"
+        }
     }
 }
 
@@ -205,7 +206,7 @@ EnsureInsideRepo
 # Overwrite any previous version.
 Set-Content -Path $CreateBranchHookPath $CreateBranchHook
 
-AddConfigFileEntry $GitIgnorePath $GitIgnoreContent
+AddGitIgnoreContent $GitIgnorePath
 WriteBranchHookScript
 
 Write-Host 'Git configured.'

@@ -46,7 +46,7 @@ namespace MigratorUnitTests
         {
             _databaseMigrator = Substitute.For<DatabaseMigrator>(TestLogger.Instance());
 
-            var JOURNAL_TABLE_SCRIPT = @$"..\..\..\..\{nameof(DatabaseMigration)}\RuntimeScripts\1.sql"; // first should be journal table creation script.
+            var JOURNAL_TABLE_SCRIPT = @$"..\..\..\..\{nameof(DatabaseMigration)}\{nameof(DatabaseMigration)}\RuntimeScripts\1.sql"; // first should be journal table creation script.
             File.Exists(JOURNAL_TABLE_SCRIPT).Should().BeTrue();
             _tempScriptPath = Path.GetTempFileName();
             File.WriteAllText(_tempScriptPath, DatabaseMigratorTestScripts.CreateTableScript);
