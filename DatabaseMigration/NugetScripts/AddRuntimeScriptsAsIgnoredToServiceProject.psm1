@@ -37,7 +37,8 @@ function AddRuntimeScriptsProjectReference($serviceProjectFilePath)
             AddCompileElem $doc $itemGroupElem
             AddResourceElem $doc $itemGroupElem
             AddNoneElem $doc $itemGroupElem
-            $parent.AppendChild($itemGroupElem) > $null
+            #GOL: this node must come before other nodes that reference these items.  If not, the whole parent folder won't appear in the project structure.
+            $parent.PrependChild($itemGroupElem) > $null
         } else {
             if ($null -eq $existingCompileElem) {
                 AddCompileElem $doc $existingItemGroupElem

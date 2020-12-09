@@ -10,6 +10,6 @@
     * The name of the database project matches the name of your database.
 * To run the configuration script:
     * Close this solution (probably not absolutely necessary, but projects will be updated and you will get VS complaining).
-    * Extract contents of DatabaseMigrationDeliverables.zip into it's own directory under this project.
+    * Extract contents of DatabaseMigrationDeliverables.zip (which should appear as an item under this project) into it's own directory under this project.
     * Run ./ConfigureDatabaseMigrator.ps1
 * After running the configuration script, see DatabaseMigrator_README.MD
