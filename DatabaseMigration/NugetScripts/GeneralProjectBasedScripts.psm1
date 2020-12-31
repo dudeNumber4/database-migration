@@ -39,3 +39,27 @@ Searches downward / Returns full path to project file.
 function GetProjectPath([string] $root, [string] $projExtension) {
     Get-Childitem –Path $root -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -eq $projExtension } | Select-Object -ExpandProperty 'FullName'
 }
+
+<#
+.DESCRIPTION
+Given an $absoluteChild that is a subdirectory of $absoluteParent, return relative path from parent to child
+Ex:
+Parent: C:\source\database-migration
+Child:  C:\source\database-migration\database-migration\MigrationDatabase
+Result: /database-migration/MigrationDatabase
+#>
+function AbsoluteToRelative([string] $absoluteParent, [string] $absoluteChild) {
+    $absoluteParent = $absoluteParent.Replace('/', '\') # normalize
+    $absoluteChild = $absoluteChild.Replace('/', '\') # normalize
+    $parent = $absoluteChild
+    $segments = ''
+    while (-not [System.String]::IsNullOrEmpty($parent)) {
+        $segment = Split-Path -Leaf $parent
+        $segments = ($segments -eq '') ? $segment : "$segment\$segments"
+        if ((Join-Path $absoluteParent $segments) -eq $absoluteChild) {
+            break
+        }
+        $parent = Split-Path -Parent $parent
+    }
+    "\$segments"
+}

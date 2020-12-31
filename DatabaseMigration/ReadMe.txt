@@ -11,5 +11,5 @@
 * To run the configuration script:
     * Close this solution (probably not absolutely necessary, but projects will be updated and you will get VS complaining).
     * Extract contents of DatabaseMigrationDeliverables.zip (which should appear as an item under this project) into it's own directory under this project.
-    * Run ./ConfigureDatabaseMigrator.ps1
+    * Run ./ConfigureDatabaseMigrator.ps1 in powershell CORE (NOT in package manager explorer within visual studio).
 * After running the configuration script, see DatabaseMigrator_README.MD

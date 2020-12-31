@@ -4,8 +4,8 @@
 #       --> Replace 'DatabaseMigration.csproj' with result of call to GetServiceProjectName
 # $global:DatabaseProjectName = ''
 #       --> Replace '' with result of call to GetSqlProjectName
-# $global:DatabaseMigrationRoot = '/DatabaseMigration/DatabaseMigration'
-#       --> Replace '/DatabaseMigration with '/ + result of call to GetServiceProjectName
+# $global:DatabaseMigrationRoot = '/DatabaseMigration
+#       --> Replace '/DatabaseMigration with '/ + relative folder containing service project
 
 #$commitFilePath = 'C:\temp\DatabaseMigration\CommitDatabaseScripts.ps1'
 #$commonFilePath = 'C:\temp\DatabaseMigration\Common.psm1'

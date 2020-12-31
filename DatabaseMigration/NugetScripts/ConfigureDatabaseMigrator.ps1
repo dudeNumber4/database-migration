@@ -47,8 +47,8 @@ if ($null -eq $serviceProjectFilePath) {
 }
 try {
     AddRuntimeScriptsProjectReference $serviceProjectFilePath
-    $serviceProjectRoot = ($serviceProjectFilePath | Split-Path)
-    $runtimeScriptsDir = "$serviceProjectRoot\DatabaseMigration\RuntimeScripts"
+    $serviceProjectRootPath = ($serviceProjectFilePath | Split-Path)  # absolute
+    $runtimeScriptsDir = "$serviceProjectRootPath\DatabaseMigration\RuntimeScripts"
     # force: create if not present
     mkdir -Force $runtimeScriptsDir > $null
 }
@@ -59,12 +59,12 @@ catch {
 
 Write-Host 'Replacing references in core powershell files' -ForegroundColor Green
 $serviceProjectFileName = Split-Path -Leaf $serviceProjectFilePath
-$serviceProjectName = Split-Path -LeafBase $serviceProjectFilePath
+$relativeServiceProjectRootPath = AbsoluteToRelative $slnDir $serviceProjectRootPath
 $DatabaseProjectName = Split-Path -LeafBase $databaseProjectFilePath
 try {
     ReplaceText $commitFilePath 'DatabaseMigration.csproj' $serviceProjectFileName
     ReplaceText $commonFilePath "global:DatabaseProjectName = ''" "global:DatabaseProjectName = '$DatabaseProjectName'"
-    ReplaceText $commonFilePath "global:DatabaseMigrationRoot = '/DatabaseMigration" "global:DatabaseMigrationRoot = '/$serviceProjectName"
+    ReplaceText $commonFilePath "global:DatabaseMigrationRoot = '/DatabaseMigration" "global:DatabaseMigrationRoot = '$relativeServiceProjectRootPath"
     ReplaceText $originalReadmeFilePath 'MigrationDatabase' $DatabaseProjectName
 }
 catch {

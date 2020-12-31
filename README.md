@@ -16,7 +16,7 @@ A system for automating the propogation of database changes throughout all dev/s
 2. Visual Studio: The powershell scripts will only work from VS package manager console (see the scripts for details).
 3. Sql Server.  `DatabaseMigrator.cs` assumes Sql Server, but could probably be easily modified for a different database.  There must only be one database to manage in the repository where this is put into place.
 4. Git.
-5. Powershell v6 (core) or greater.  To ensure it's installed correctly, open a git bash shell and type `where pwsh`.  If it can't be found, find where it's installed and ensure that's on your path.
+5. Powershell v7 or greater.  To ensure it's installed correctly, open a git bash shell and type `where pwsh`.  If it can't be found, find where it's installed and ensure that's on your path.
 6. Note: Your database project name and database name are expected to match.  I think this is a good thing.
 
 #### Initial Configuration
