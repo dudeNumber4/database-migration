@@ -51,6 +51,8 @@ Result: /database-migration/MigrationDatabase
 function AbsoluteToRelative([string] $absoluteParent, [string] $absoluteChild) {
     $absoluteParent = $absoluteParent.Replace('/', '\') # normalize
     $absoluteChild = $absoluteChild.Replace('/', '\') # normalize
+    $absoluteParent = $absoluteParent.EndsWith('\') ? $absoluteParent.Substring(0, $absoluteParent.Length -1) : $absoluteParent # remove trailing
+    $absoluteChild = $absoluteChild.EndsWith('\') ? $absoluteChild.Substring(0, $absoluteChild.Length -1) : $absoluteChild # remove trailing
     $parent = $absoluteChild
     $segments = ''
     while (-not [System.String]::IsNullOrEmpty($parent)) {
