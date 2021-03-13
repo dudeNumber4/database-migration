@@ -164,6 +164,7 @@ function AddDatabaseProjectItems($projPath) {
         AddItemGroupChildTo $projPath 'None' 'GenerateMigrationScript.ps1'
         AddItemGroupChildTo $projPath 'None' 'UpdateDatabaseStateFile.ps1'
         AddItemGroupChildTo $projPath 'None' 'UpdateProject.scmp'
+        AddItemGroupChildTo $projPath 'None' 'DetectChanges.psm1'
     } else {
         throw "Project file doesn't contain expected namespace"
     }

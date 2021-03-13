@@ -1,5 +1,7 @@
 ############################################## WARNING!! EVERYTHING HEREIN MUST BE IDEMPOTENT!!
 
+Set-Location (Get-Item $PSCommandPath).DirectoryName # ensure current dir is this script location.
+
 Import-Module './AddNodesToDatabaseProj.psm1'
 Import-Module './AddRuntimeScriptsAsIgnoredToServiceProject.psm1'
 Import-Module './GeneralProjectBasedScripts.psm1'
@@ -14,13 +16,13 @@ $compareFilePath = '.\UpdateProject.scmp'
 $extractResourceScriptsFilePath = '.\ExtractResourceScripts.ps1'
 $generateMigrationScriptFilePath = '.\GenerateMigrationScript.ps1'
 $updateDatabaseStateFileFilePath = '.\UpdateDatabaseStateFile.ps1'
+$detectChangesPath = '.\DetectChanges.psm1'
 $gitHooksDir = '.\GitHooks'
 $originalReadmeFilePath = '.\README.MD'
 $finalReadMeFilePath = '.\DatabaseMigrator_README.MD'
 $runtimeScriptsDir = ''
 
 Write-Host 'Initial checks...' -ForegroundColor Green
-Set-Location (Get-Item $PSCommandPath).DirectoryName # ensure current dir is this script location.
 $currentScriptDir = (Get-Item $PSCommandPath).DirectoryName
 $slnDir = GetSolutionDir $currentScriptDir
 if ($null -eq $slnDir) {
@@ -75,6 +77,8 @@ catch {
 Write-Host 'Moving items under database project.' -ForegroundColor Green
 $databaseProjectRootDir = $databaseProjectFilePath | Split-Path -Parent
 try {
+    # Unfortunately, we can't just iterate over all ps scripts in current dir because there are config scripts bundled with actual system scripts (see pre-build.ps1)
+    # If you add new here, you must also add in AddDatabaseProjectItems
     # overwrite except $compareFilePath; they may have customized this.
     Copy-Item -Force $commitFilePath "$databaseProjectRootDir\$(Split-Path -Leaf $commitFilePath)"
     Copy-Item -Force $commonFilePath "$databaseProjectRootDir\$(Split-Path -Leaf $commonFilePath)"
@@ -86,6 +90,7 @@ try {
     Copy-Item -Force $extractResourceScriptsFilePath "$databaseProjectRootDir\$(Split-Path -Leaf $extractResourceScriptsFilePath)"
     Copy-Item -Force $generateMigrationScriptFilePath "$databaseProjectRootDir\$(Split-Path -Leaf $generateMigrationScriptFilePath)"
     Copy-Item -Force $updateDatabaseStateFileFilePath "$databaseProjectRootDir\$(Split-Path -Leaf $updateDatabaseStateFileFilePath)"
+    Copy-Item -Force $detectChangesPath "$databaseProjectRootDir\$(Split-Path -Leaf $detectChangesPath)"
 }
 catch {
     Write-Host "Error copying files under database project: $_" -ForegroundColor Red
@@ -93,7 +98,7 @@ catch {
 }
 
 # Also adds references to the root level files (powershell files & compare file)
-Write-Host 'Adding script folders and their project references to the database project.' -ForegroundColor Green
+Write-Host 'Adding scripts and folders and their project references to the database project.' -ForegroundColor Green
 try {
     AddDatabaseProjectItems $databaseProjectFilePath
 }

@@ -5,6 +5,7 @@
 #>
 
 Import-Module "$PSScriptRoot\Common.psm1" #-Force
+Import-Module "$PSScriptRoot\DetectChanges.psm1" #-Force
 
 # Set after determining solution root
 $global:NextScriptNumber = 0
@@ -170,7 +171,8 @@ function CommitScriptAsResource([string] $initialScriptPath) {
         $true
     }
     catch {
-        Write-Host "Error committing script: $_.  Note that your script may have moved to the RuntimeScripts directory as '$newFilePath' and a reference to it may have been added to your service project."
+        Write-Host "Error committing script: $_" -ForegroundColor Red
+        Write-Host "Note that your script may have moved to the RuntimeScripts directory as '$newFilePath' and a reference to it may have been added to your service project."
         $false
     }
     finally {
@@ -265,4 +267,5 @@ if (TestScriptRelatedPaths) { # else error written to console
     $global:NextScriptNumber = GetNextScriptNumber
     ProcessMigrationDirectory
     ProcessAdHocDirectory
+    GenerateDiffReport
 }

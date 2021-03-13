@@ -1,5 +1,7 @@
 ﻿::Database Migrator::
 
+If this is an upgrade, just follow instructions in "To run the configuration script" below.
+
 * This is the initial readme; the full readme will be delivered upon running the configuration powershell script.
 * Before running the configuration script (ConfigureDatabaseMigrator.ps1 contained within DatabaseMigrationDeliverables.zip that should appear under your project), read the following requirements:
     * You just added this to the main/startup/service of your solution.  This service is where migrations will be executed from.
@@ -10,6 +12,6 @@
     * The name of the database project matches the name of your database.
 * To run the configuration script:
     * Close this solution (probably not absolutely necessary, but projects will be updated and you will get VS complaining).
-    * Extract contents of DatabaseMigrationDeliverables.zip (which should appear as an item under this project) into it's own directory under this project.
+    * Extract contents of DatabaseMigrationDeliverables.zip (which should appear as an item under this project) into it's own directory UNDER THIS PROJECT.
     * Run ./ConfigureDatabaseMigrator.ps1 in powershell CORE (NOT in package manager explorer within visual studio).
 * After running the configuration script, see DatabaseMigrator_README.MD

@@ -7,85 +7,7 @@ If approved, developer will run CommitDatabaseScripts to finish the process.
 
 Import-Module "$PSScriptRoot\Common.psm1" #-Force
 
-$global:SQLPackagePath = ''
-$global:InitialHostLocation = Get-Location # We will have to reset to our initial location
 $global:ScriptOutputPath = ''
-
-<#
-.DESCRIPTION
-Easiest way to verify that the build output will be where expected.
-#>
-function EnsureDebugConfigurationSelected {
-    if ($dte.ActiveSolutionProjects.Object.CurrentConfigName.ConfigName -ne 'Debug') {
-        throw 'Please select Debug configuration and run again.'
-    }
-}
-
-<#
-.DESCRIPTION
-Finds a file located within the current VS running location.
-$DevEnvExe comes from ($dte).FileName, path to IDE exe
-#>
-function FindMSPath([string] $DevEnvExe, [string] $TargetExeName) {
-    Write-Host "Searching for $TargetExeName..." -ForegroundColor DarkGreen
-    $parentDir = [System.IO.Path]::GetDirectoryName($DevEnvExe)
-    Set-Location $parentDir
-    #  We have to exclude the forking amd version of msbuild. -Exclude doesn't work.  -notcontains does not work.
-    # Update: this was present when searching for msbuild.  Not doing that anymore, but it won't hurt anything.
-    $result = Get-ChildItem -Include $TargetExeName -Recurse | Where-Object { $_.FullName -notlike '*amd64*' }
-    while ($null -eq $result) {
-        # null must come first
-        $parentDir = [System.IO.Directory]::GetParent($parentDir)
-        if (Test-Path $parentDir) {
-            # Ensure no endless loop
-            Set-Location $parentDir
-            $result = Get-ChildItem -Include $TargetExeName -Recurse | Where-Object { $_.FullName -notlike '*amd64*' }
-        }
-        else {
-            break
-        }
-    }
-
-    if ($result -is [Array]) {
-        # If we find multiples, take the last one found (should be most current, e.g. multiple copies of msbuild)
-        $result = $result[$result.Length - 1]
-    }
-
-    # Ensure it's a valid path
-    if (Test-Path $result) {
-        $result.FullName
-    }
-    else {
-        ''
-    }
-
-    Set-Location $InitialHostLocation > $null # Set back to solution location.
-}
-
-<#
-.DESCRIPTION
-Search for dependent executable(s)
-#>
-function find-executables() {
-    # This one seems to have to search several dirs above the next one and takes quite awhile.
-    # Update: now building directly from automation.
-    #$global:MSBuildPath = FindMSPath (($dte).FileName) 'msbuild.exe'
-    $global:SQLPackagePath = FindMSPath (($dte).FileName) 'sqlpackage.exe'
-}
-
-function TestExecutablePaths {
-    # dunno how to chain these
-    #if (Test-Path $global:MSBuildPath){
-    if (Test-Path $global:SQLPackagePath) {
-        $true
-    }
-    else {
-        throw 'Can''t resolve sqlpackage.exe path.  Is data tools installed?'
-    }
-    #} else {
-    #  throw 'Can''t resolve MSBuild path: [$MSBuildPath]'
-    #}
-}
 
 <#
 .DESCRIPTION
@@ -194,7 +116,6 @@ DeleteRefactorLogs
 EnsureDebugConfigurationSelected
 SetProjectBasedGlobals
 EnsureExpectedDirectoriesExist
-find-executables
 
 if (TestProjectPaths -and TestExecutablePaths) {
     # else error written to console

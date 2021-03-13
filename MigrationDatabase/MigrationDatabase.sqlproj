@@ -66,6 +66,7 @@
   </ItemGroup>
   <ItemGroup>
     <Build Include="dbo\Tables\Entity.sql" />
+    <Build Include="dbo\Tables\MigrationsJournal.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="UpdateProject.scmp" />
@@ -74,5 +75,6 @@
     <None Include="GenerateMigrationScript.ps1" />
     <None Include="UpdateDatabaseStateFile.ps1" />
     <None Include="CommitDatabaseScripts.ps1" />
+    <None Include="DetectChanges.psm1" />
   </ItemGroup>
 </Project>
