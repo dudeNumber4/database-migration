@@ -108,7 +108,7 @@ function BuildDacpac {
   
         # target path should've been set to what was the previous state of the database.
         if (-not (Test-Path $global:TargetDacPath)) { # "source": see GenerateDiffScript
-            throw "Expected file [$global:TargetDacPath], to be present, but it's not. That file is should've been generated upon branch creation. Have you run deploy-database-git-scripts.ps1? See GitHooks/ReadMe."
+            throw "Expected file [$global:TargetDacPath], to be present, but it's not. That file should've been generated upon branch creation. Have you run deploy-database-git-scripts.ps1? See ReadMe."
         }
 
         #$dte.ExecuteCommand('Build.BuildOnlyProject') # nope

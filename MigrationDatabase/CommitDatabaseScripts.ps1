@@ -267,5 +267,6 @@ if (TestScriptRelatedPaths) { # else error written to console
     $global:NextScriptNumber = GetNextScriptNumber
     ProcessMigrationDirectory
     ProcessAdHocDirectory
+    Write-Host "Scripts processed, generating diff report if necessary..." -ForegroundColor DarkGreen
     GenerateDiffReport
 }

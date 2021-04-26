@@ -142,6 +142,7 @@ namespace DatabaseMigration
                 msg = _failedScripts[script.number].Replace("'", "''"); // value is err msg
             }
 
+            // Table has defaults.
             var commandText = begin ? 
                 $"insert {_journalTableStructure.TableName}({_journalTableStructure.NumberColumn}, {_journalTableStructure.BegunColumn}) values ('{script.number}', GetUtcDate())" 
                 : $"update {_journalTableStructure.TableName} set {_journalTableStructure.CompletedColumn} = {completed}, {_journalTableStructure.ScriptColumn} = '{scriptFileName}', {_journalTableStructure.MessageColumn} = '{msg}' where {_journalTableStructure.NumberColumn} = '{script.number}'";
