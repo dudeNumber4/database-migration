@@ -11,10 +11,8 @@ using System.Text;
 namespace DatabaseMigration
 {
 
-    [SuppressMessage("Dispose", "CA1063", Justification = "Dispose WILL NOT WORK any other way")]
     [SuppressMessage("Dispose", "CA1816", Justification = "Dispose WILL NOT WORK any other way")]
     [SuppressMessage("Disallow protected fields", "CA1051", Justification = "OO disallowed?")]
-    [SuppressMessage("same as above", "SA1401", Justification = "I don't get it")]
     public class DirectDatabaseConnection: IDisposable
     {
 
@@ -25,11 +23,9 @@ namespace DatabaseMigration
         protected string _connectionString;
         protected JournalTableStructure _journalTableStructure = new JournalTableStructure();
         protected Server _serverConnection;
+        protected ISchemaChangingScripts _schemaChangingScripts;
 
-        public DirectDatabaseConnection(IStartupLogger log)
-        {
-            _log = log;
-        }
+        public DirectDatabaseConnection(IStartupLogger log) => _log = log;
 
         public void Dispose()
         {
@@ -55,6 +51,14 @@ namespace DatabaseMigration
         }
 
         protected void AssertOpenConnection() => Debug.Assert(_connection.State == ConnectionState.Open, "Expected open connection");
+
+        protected bool IsSchemaChanging(string script)
+        {
+            var result = SchemaChangeDetection.SchemaChanged(_serverConnection, script, _log);
+            if (_schemaChangingScripts?.Scripts != null)
+                _schemaChangingScripts.Scripts.Add(script);
+            return result;
+        }
 
     }
 

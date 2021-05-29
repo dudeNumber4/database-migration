@@ -15,7 +15,7 @@ namespace DatabaseMigration
 
     public interface IDatabaseMigrator
     {
-        void PerformMigrations(string connectionString);
+        void PerformMigrations(string connectionString, ISchemaChangingScripts schemaChangingScripts);
     }
 
     /// <summary>
@@ -35,16 +35,15 @@ namespace DatabaseMigration
         private string _scriptFolderPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), nameof(DatabaseMigration), "RuntimeScripts");
 
         public DatabaseMigrator(IStartupLogger log)
-            : base(log)
-        {
-        }
+            : base(log) { }
 
         /// <summary>
         /// Used to execute scripts from our known location
         /// </summary>
         /// <param name="connectionStr">Connection String.</param>
-        public void PerformMigrations(string connectionStr)
+        public void PerformMigrations(string connectionStr, ISchemaChangingScripts schemaChangingScripts)
         {
+            _schemaChangingScripts = schemaChangingScripts;
             ConfigureConnections(connectionStr);
             if (_connection.State == System.Data.ConnectionState.Open)
             {

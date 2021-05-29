@@ -86,7 +86,7 @@ namespace DatabaseMigration
                 {
                     // Explicit table lock hint.  Not often used, maybe I'm re-inventing a queue here, so be it.
                     // The timeout here is 30 seconds.  I couldn't find any way to modify that (not related to connection timeout which is just timeout to initial connection to server).
-                    using (var cmd = new SqlCommand($"select * from {_journalTableStructure.TableName} (TABLOCKX) where {_journalTableStructure.NumberColumn} = '{script.number}'", _connection, transaction))
+                    using (var cmd = new SqlCommand($"select 1 from {_journalTableStructure.TableName} (TABLOCKX) where {_journalTableStructure.NumberColumn} = '{script.number}'", _connection, transaction))
                     {
                         try
                         {
@@ -123,29 +123,16 @@ namespace DatabaseMigration
         /// <param name="begin">Whether we're recording the begin or end of script execution.</param>
         /// <param name="transaction">A SQL transaction is passed upon the initial write of the record for asynchronously running clients.</param>
         /// <returns>Pass/fail</returns>
-        [SuppressMessage("Unk Category", "CA1307", Justification = "string replace won't ever care about culture")]
         internal bool RecordScriptInJournal((int number, string value) script, bool begin, SqlTransaction transaction = null)
         {
             Debug.Assert(_failedScripts != null, "HashSet of failed scripts is null.");
             var result = false;
             var scriptFileName = Path.GetFileName(script.value);
-            char completed = '1';
-            var msg = string.Empty;
 
             if (begin)
-            {
                 DeletePriorEntry(script.number, transaction);
-            }
-            else if (_failedScripts.ContainsKey(script.number))
-            {
-                completed = '0';
-                msg = _failedScripts[script.number].Replace("'", "''"); // value is err msg
-            }
 
-            // Table has defaults.
-            var commandText = begin ? 
-                $"insert {_journalTableStructure.TableName}({_journalTableStructure.NumberColumn}, {_journalTableStructure.BegunColumn}) values ('{script.number}', GetUtcDate())" 
-                : $"update {_journalTableStructure.TableName} set {_journalTableStructure.CompletedColumn} = {completed}, {_journalTableStructure.ScriptColumn} = '{scriptFileName}', {_journalTableStructure.MessageColumn} = '{msg}' where {_journalTableStructure.NumberColumn} = '{script.number}'";
+            var commandText = GetCommandText(script, begin, scriptFileName);
             using (var cmd = new SqlCommand(commandText, _connection, transaction))
             {
                 try
@@ -161,6 +148,31 @@ namespace DatabaseMigration
             }
 
             return result;
+        }
+
+        private string GetCommandText((int number, string value) script, bool begin, string scriptFileName)
+        {
+            var msg = string.Empty;
+            char completed = '1';
+            var schemaChanging = false;
+            if (!begin)
+            {
+                if (_failedScripts.ContainsKey(script.number))
+                {
+                    completed = '0';
+                    msg = _failedScripts[script.number].Replace("'", "''"); // value is err msg
+                }
+                schemaChanging = IsSchemaChanging(script.value);
+            }
+            // Note: table has some defaults.
+            return begin ?
+                   $"insert {_journalTableStructure.TableName}({_journalTableStructure.NumberColumn}, {_journalTableStructure.BegunColumn}) values ('{script.number}', GetUtcDate())"
+                   : $"update {_journalTableStructure.TableName} set " +
+                     $"{_journalTableStructure.CompletedColumn} = {completed}, " +
+                     $"{_journalTableStructure.ScriptColumn} = '{scriptFileName}', " +
+                     $"{_journalTableStructure.MessageColumn} = '{msg}', " +
+                     $"{_journalTableStructure.SchemaChangedColumn} = {schemaChanging}" +
+                     $" where {_journalTableStructure.NumberColumn} = '{script.number}'";
         }
 
         /// <summary>
