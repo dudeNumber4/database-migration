@@ -1,21 +1,19 @@
+using DatabaseMigration.Utils;
+using Microsoft.SqlServer.Management.Common;
+using Microsoft.SqlServer.Management.Smo;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.SqlServer.Management.Common;
-using Microsoft.SqlServer.Management.Smo;
-using DatabaseMigration.Utils;
 
 namespace DatabaseMigration
 {
 
     public interface IDatabaseMigrator
     {
-        void PerformMigrations(string connectionString);
+        void PerformMigrations(string connectionString, List<string> schemaChangingScripts);
     }
 
     /// <summary>
@@ -23,9 +21,6 @@ namespace DatabaseMigration
     /// <see cref="_scriptFolderPath"/> is the folder containing migration scripts.
     /// Using basic ADO to connect to database to keep simple; only one table and a few columns to interact with, and we are doing this in a context where DI isn't even up and running.
     /// </summary>
-    [SuppressMessage("Globalization", "CA1305", Justification="I don't need provider here")]
-    [SuppressMessage("Globalization", "CA1304", Justification="I don't need provider here")]
-    [SuppressMessage("Security Category", "CA2100", Justification = "SQL Statements are generated within")]
     public class DatabaseMigrator : DirectDatabaseConnection, IDatabaseMigrator
     {
 
@@ -33,18 +28,18 @@ namespace DatabaseMigration
         /// Folder where scripts live.
         /// </summary>
         private string _scriptFolderPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), nameof(DatabaseMigration), "RuntimeScripts");
+        private List<string> _schemaChangingScripts;
 
         public DatabaseMigrator(IStartupLogger log)
-            : base(log)
-        {
-        }
+            : base(log) { }
 
         /// <summary>
         /// Used to execute scripts from our known location
         /// </summary>
         /// <param name="connectionStr">Connection String.</param>
-        public void PerformMigrations(string connectionStr)
+        public void PerformMigrations(string connectionStr, List<string> schemaChangingScripts)
         {
+            _schemaChangingScripts = schemaChangingScripts;
             ConfigureConnections(connectionStr);
             if (_connection.State == System.Data.ConnectionState.Open)
             {
@@ -94,15 +89,25 @@ namespace DatabaseMigration
                             continue;
                         }
 
-                        if (journalTable.TryAcquireLockFor((script.fileNumber, script.filePath)))
+                        string scriptText = File.ReadAllText(script.filePath);
+                        if (string.IsNullOrEmpty(scriptText))
                         {
-                            if (ExecuteScript(script.fileNumber, File.ReadAllText(script.filePath)))
+                            _log.LogInfo($"Encountered empty script during {nameof(DatabaseMigrator.RunMigrations)}.  Script number: {script.fileNumber}");
+                            continue;
+                        }
+                        var scriptDetails = new ScriptDetails(script.fileNumber, script.filePath, SchemaChangeDetection.SchemaChanged(_serverConnection, scriptText, _log));
+
+                        if (journalTable.TryAcquireLockFor(scriptDetails))
+                        {
+                            if (ExecuteScript(script.fileNumber, scriptText))
                             {
                                 _log.LogInfo($"Script [{script.fileNumber}] successfully ran.");
                             }
-                            if (journalTable.RecordScriptInJournal(script, false))
+                            if (journalTable.RecordScriptInJournal(scriptDetails, false))
                             {
                                 _log.LogInfo($"Script [{script.fileNumber}] successfully recorded in migration table.");
+                                if (scriptDetails.SchemaChanging && (_schemaChangingScripts != null))
+                                    _schemaChangingScripts.Add(scriptText);
                             }
                         }
                         else

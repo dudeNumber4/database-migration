@@ -1,5 +1,6 @@
 using DatabaseMigration.Utils;
 using FluentAssertions;
+using NSubstitute;
 using System;
 using System.IO;
 using System.Text;
@@ -30,7 +31,7 @@ namespace MigratorUnitTests
             File.Exists(FilePath()).Should().BeTrue();
             File.Exists(NestedFilePath()).Should().BeTrue();
 
-            DirectoryUtils.FlushDirectory(NestedDir(), TestLogger.Instance(), deleteContainingDir);
+            DirectoryUtils.FlushDirectory(NestedDir(), Substitute.For<IStartupLogger>(), deleteContainingDir);
 
             File.Exists(FilePath()).Should().BeFalse();
             File.Exists(NestedFilePath()).Should().BeFalse();
