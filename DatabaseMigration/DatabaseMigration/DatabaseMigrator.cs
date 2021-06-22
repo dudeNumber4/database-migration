@@ -85,16 +85,29 @@ namespace DatabaseMigration
             {
                 try
                 {
-                    foreach ((int fileNumber, string filePath) script in GetScripts())
+                    var completedScriptNumbers = journalTable.GetCompletedScriptNumbers();
+                    foreach (var script in GetScripts())
                     {
+                        if (completedScriptNumbers.Contains(script.fileNumber))
+                        {
+                            LogScriptAlreadyRan(script.fileNumber);
+                            continue;
+                        }
+
                         if (journalTable.TryAcquireLockFor((script.fileNumber, script.filePath)))
                         {
-                            ExecuteScript(script.fileNumber, File.ReadAllText(script.filePath));
-                            journalTable.RecordScriptInJournal(script, false);
+                            if (ExecuteScript(script.fileNumber, File.ReadAllText(script.filePath)))
+                            {
+                                _log.LogInfo($"Script [{script.fileNumber}] successfully ran.");
+                            }
+                            if (journalTable.RecordScriptInJournal(script, false))
+                            {
+                                _log.LogInfo($"Script [{script.fileNumber}] successfully recorded in migration table.");
+                            }
                         }
                         else
                         {
-                            _log.LogInfo($"Skipping script [{script.fileNumber}]; already executed or may be in process from another client.");
+                            LogScriptAlreadyRan(script.fileNumber);
                         }
                     }
                 }
@@ -107,6 +120,11 @@ namespace DatabaseMigration
             {
                 _log.LogInfo($"Unable to create/ensure presence of table {_journalTableStructure.TableName}");
             }
+        }
+
+        private void LogScriptAlreadyRan(int fileNumber)
+        {
+            _log.LogInfo($"Skipping script [{fileNumber}]; already executed or may be in process from another client.");
         }
 
         private bool ExecuteScript(int scriptNumber, string script)

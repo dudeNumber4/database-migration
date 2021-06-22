@@ -116,6 +116,32 @@ namespace DatabaseMigration
             return result;
         }
 
+        internal HashSet<int> GetCompletedScriptNumbers()
+        {
+            var numberColumnName = _journalTableStructure.NumberColumn;
+            var scriptsRun = new HashSet<int>();
+
+            using (var cmd = new SqlCommand($"select {numberColumnName} from {_journalTableStructure.TableName} where {_journalTableStructure.CompletedColumn} = 1", _connection))
+            {
+                try
+                {
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult))
+                    {
+                        while (reader.Read())
+                        {
+                            scriptsRun.Add(reader.GetInt32(numberColumnName));
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    _log.LogInfo($"Error checking database to get list of applied scripts: {ex.Message}");
+                }
+            }
+
+            return scriptsRun;
+        }
+
         /// <summary>
         /// Add a record that a script is being (begin true) or has completed (begin false) executed.
         /// </summary>

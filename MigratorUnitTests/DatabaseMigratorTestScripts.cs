@@ -20,13 +20,15 @@ namespace MigratorUnitTests
         public static string CreateTableScript => string.Format(CREATE_TABLE, nameof(DatabaseMigratorTests));
         // cleanup scripts
         public static string DropTableScript => string.Format(DROP_TABLE, nameof(DatabaseMigratorTests));
-        public static string DeleteJournalRecordScript => string.Format(DELETE_JOURNAL_RECORD, _journalTableStructure.TableName, _journalTableStructure.NumberColumn, TestScriptNumber);
+        public static string DeleteJournalRecordScript => DeleteScript(TestScriptNumber);
         // script to check that test script ran
         public static string TableExistsScript => string.Format(TABLE_EXISTS, nameof(DatabaseMigratorTests));
         // script that simulates another service instance already started/running our script.
         public static string SimulateOtherServiceScript => string.Format(SIMULATE_OTHER_SERVICE, _journalTableStructure.TableName, _journalTableStructure.NumberColumn, _journalTableStructure.BegunColumn, _journalTableStructure.CompletedColumn, TestScriptNumber);
 
-        public static int TestScriptNumber => Int32.MaxValue;
+        public static string InsertAppliedScript(int scriptNumber) => $"insert [{_journalTableStructure.TableName}]({_journalTableStructure.NumberColumn}, {_journalTableStructure.BegunColumn}, {_journalTableStructure.CompletedColumn}, {_journalTableStructure.ScriptColumn}, {_journalTableStructure.MessageColumn}) values ({scriptNumber}, DATEADD(minute, -1, GETUTCDATE()), 1, '{scriptNumber}.sql', 'Auto Created Test Data' )";
+        public static string DeleteScript(int scriptNumber) => string.Format(DELETE_JOURNAL_RECORD, _journalTableStructure.TableName, _journalTableStructure.NumberColumn, scriptNumber);
+        public static int TestScriptNumber => int.MaxValue;
     }
 
 }

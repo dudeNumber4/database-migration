@@ -7,6 +7,8 @@ using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using Xunit;
+using System.Collections.Generic;
+using DatabaseMigration.Utils;
 
 namespace MigratorUnitTests
 {
@@ -18,6 +20,7 @@ namespace MigratorUnitTests
         private IConfigurationRoot _config;
         private string _connectionString;
         private string _tempScriptPath;
+        readonly string _env = Environment.GetEnvironmentVariable("CI") ?? "DEV";
 
         public DatabaseMigratorTests()
         {
@@ -30,7 +33,7 @@ namespace MigratorUnitTests
         [InlineData(false)]
         public void PerformMigration(bool normalExecution)
         {
-            _connectionString = _config.GetConnectionString("migration");
+            _connectionString = _config.GetConnectionString(_env);
             //TableExists(DatabaseMigratorTestScripts.JournalTableExistsScript).Should().BeTrue("Journal table expected to be present");
             ExecutePreScripts(normalExecution);
             SetMigratorSubstitute();
@@ -42,17 +45,97 @@ namespace MigratorUnitTests
             TableExists(DatabaseMigratorTestScripts.TableExistsScript).Should().Be(normalExecution, $"{nameof(_databaseMigrator)}, expected {(normalExecution ? "" : "not ")}to execute script.");
         }
 
+        [Fact]
+        public void PerformMigrationWhileSkippingAlreadyRunScripts()
+        {
+            _connectionString = _config.GetConnectionString(_env);
+            _connectionString.Should().NotBeNullOrEmpty("Connection string should've been configured.");
+            const int notYetRunScriptNumber = 4444;
+            const int alreadyRanScriptNumber = 999911;
+
+            // Use the migrator without any scripts to ensure migrations journal is created correctly.
+            var emptyMigrator = GetDatabaseMigratorSubstitute(Enumerable.Empty<(int, string)>(), Substitute.For<IStartupLogger>());
+            emptyMigrator.PerformMigrations(_connectionString);
+            emptyMigrator.Dispose();
+
+            ExecuteScript(DatabaseMigratorTestScripts.InsertAppliedScript(alreadyRanScriptNumber));
+            ExecuteScript(DatabaseMigratorTestScripts.InsertAppliedScript(999922));
+            ExecuteScript(DatabaseMigratorTestScripts.InsertAppliedScript(999933));
+
+            var scripts = new List<(int scriptNumber, string scriptPath)>
+            {
+                CreateScript(alreadyRanScriptNumber, Path.GetTempFileName()),
+                CreateScript(notYetRunScriptNumber, Path.GetTempFileName())
+            };
+
+            var infoLogMessages = new List<string>();
+
+            try
+            {
+                var logger = Substitute.For<IStartupLogger>();
+                logger.LogInfo(Arg.Do<string>(s => { infoLogMessages.Add(s); }));
+                var databaseMigrator = GetDatabaseMigratorSubstitute(scripts, logger);
+                databaseMigrator.PerformMigrations(_connectionString);
+            }
+            finally
+            {
+                ExecuteScript(DatabaseMigratorTestScripts.DeleteScript(alreadyRanScriptNumber));
+                ExecuteScript(DatabaseMigratorTestScripts.DeleteScript(notYetRunScriptNumber));
+                ExecuteScript(DatabaseMigratorTestScripts.DeleteScript(999922));
+                ExecuteScript(DatabaseMigratorTestScripts.DeleteScript(999933));
+
+                foreach (var valueTuple in scripts)
+                {
+                    File.Delete(valueTuple.scriptPath);
+                }
+            }
+
+            Assert.Contains("Skipping script [999911]; already executed or may be in process from another client.", infoLogMessages);
+            Assert.Contains("Script [4444] successfully ran.", infoLogMessages);
+            Assert.Contains("Script [4444] successfully recorded in migration table.", infoLogMessages);
+        }
+
         private void SetMigratorSubstitute()
         {
-            _databaseMigrator = Substitute.For<DatabaseMigrator>(TestLogger.Instance());
-
-            var JOURNAL_TABLE_SCRIPT = @$"..\..\..\..\{nameof(DatabaseMigration)}\{nameof(DatabaseMigration)}\RuntimeScripts\1.sql"; // first should be journal table creation script.
-            File.Exists(JOURNAL_TABLE_SCRIPT).Should().BeTrue();
             _tempScriptPath = Path.GetTempFileName();
-            File.WriteAllText(_tempScriptPath, DatabaseMigratorTestScripts.CreateTableScript);
+            _databaseMigrator = GetDatabaseMigratorSubstitute(
+                new List<(int scriptNumber, string scriptPath)>
+                {
+                    CreateScript(
+                        DatabaseMigratorTestScripts.TestScriptNumber,
+                        _tempScriptPath,
+                        DatabaseMigratorTestScripts.CreateTableScript)
+                },
+                TestLogger.Instance());
+        }
+
+        private DatabaseMigrator GetDatabaseMigratorSubstitute(IEnumerable<(int scriptNumber, string scriptPath)> scripts, IStartupLogger logger)
+        {
+            var migrator = Substitute.For<DatabaseMigrator>(logger);
+
+            var journalTableScript = GetJournalTableCreationScript();
             // Return a script that simply creates a table.  Give it a high number/key so as to not clash with any existing scripts.  Yes, the test has way too much knowledge of the innards.
-            _databaseMigrator.GetScripts().Returns(Enumerable.Repeat((DatabaseMigratorTestScripts.TestScriptNumber, _tempScriptPath), 1));
-            _databaseMigrator.GetJournalTableCreationScript().Returns(File.ReadAllText(JOURNAL_TABLE_SCRIPT));
+            migrator.GetScripts().Returns(scripts);
+            migrator.GetJournalTableCreationScript().Returns(journalTableScript);
+            return migrator;
+        }
+
+        private (int scriptNumber, string scriptPath) CreateScript(int scriptNumber, string scriptPath, string scriptContents = null)
+        {
+            File.WriteAllText(scriptPath, scriptContents ?? "");
+            return (scriptNumber, scriptPath);
+        }
+
+        /// <summary>
+        /// 1.sql is journal table creation script.
+        /// </summary>
+        /// <returns></returns>
+        private string GetJournalTableCreationScript()
+        {
+            // should exist in bin
+            var scriptPath = $"./{nameof(DatabaseMigration)}/RuntimeScripts/1.sql";
+            File.Exists(scriptPath).Should().BeTrue("Journal creation script should be present.");
+            return File.ReadAllText(scriptPath);
         }
 
         private bool TableExists(string tableExistsScript)

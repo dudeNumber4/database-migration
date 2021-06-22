@@ -2,7 +2,6 @@ using NSubstitute;
 using System;
 using System.Linq;
 using System.Diagnostics;
-using System.Text;
 using DatabaseMigration.Utils;
 
 namespace MigratorUnitTests
