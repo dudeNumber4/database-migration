@@ -34,7 +34,7 @@ namespace MigratorUnitTests
                 Substitute.For<IStartupLogger>());
             _driver.ExecutePreScripts(normalExecution, SCRIPT_NUMBER);
 
-            _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString, null);
+            _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
             // normalExecution executes the script, "abnormal" means the migrator discovered another service instance and didn't execute it.
             // Normal execution means that a table creation script ran; check for that now.
             _driver.ScriptReturnsRows(DatabaseMigratorTestScripts.TableExistsScript).Should().Be(normalExecution, $"{nameof(DatabaseMigrator)}, expected {(normalExecution ? "" : "not ")}to execute script.");
@@ -65,7 +65,7 @@ namespace MigratorUnitTests
                 var logger = Substitute.For<IStartupLogger>();
                 logger.LogInfo(Arg.Do<string>(s => { infoLogMessages.Add(s); }));
                 _driver.SetDatabaseMigratorSubstitute(scripts, logger);
-                _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString, null);
+                _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
             }
             finally
             {
@@ -90,11 +90,11 @@ namespace MigratorUnitTests
                 CreateScript(4, DatabaseMigratorTestScripts.AlterTableScript)
             };
             _driver.SetDatabaseMigratorSubstitute(scripts, Substitute.For<IStartupLogger>());
-            var schemaChangingScripts = new List<string>();
-            _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString, schemaChangingScripts);
-            schemaChangingScripts.Should().HaveCount(2);
-            schemaChangingScripts[0].Should().BeEquivalentTo(DatabaseMigratorTestScripts.CreateTableScript);
-            schemaChangingScripts[1].Should().BeEquivalentTo(DatabaseMigratorTestScripts.AlterTableScript);
+            var schemaChangingScripts = _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
+            schemaChangingScripts.SchemaChangingScripts.Should().HaveCount(2);
+            schemaChangingScripts.SchemaChangingScripts.Should().HaveCount(2);
+            schemaChangingScripts.SchemaChangingScripts[0].Should().BeEquivalentTo(DatabaseMigratorTestScripts.CreateTableScript);
+            schemaChangingScripts.SchemaChangingScripts[1].Should().BeEquivalentTo(DatabaseMigratorTestScripts.AlterTableScript);
             // Ensure the insert between the 2 schema checks ran
             _driver.ScriptReturnsRows(DatabaseMigratorTestScripts.CheckForTableRows);
         }

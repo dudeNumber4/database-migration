@@ -13,7 +13,7 @@ namespace DatabaseMigration
 
     public interface IDatabaseMigrator
     {
-        void PerformMigrations(string connectionString, List<string> schemaChangingScripts);
+        MigrationResult PerformMigrations(string connectionString);
     }
 
     /// <summary>
@@ -28,7 +28,7 @@ namespace DatabaseMigration
         /// Folder where scripts live.
         /// </summary>
         private string _scriptFolderPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), nameof(DatabaseMigration), "RuntimeScripts");
-        private List<string> _schemaChangingScripts;
+        private readonly List<string> _schemaChangingScripts = new();
 
         public DatabaseMigrator(IStartupLogger log)
             : base(log) { }
@@ -37,17 +37,19 @@ namespace DatabaseMigration
         /// Used to execute scripts from our known location
         /// </summary>
         /// <param name="connectionStr">Connection String.</param>
-        public void PerformMigrations(string connectionStr, List<string> schemaChangingScripts)
+        public MigrationResult PerformMigrations(string connectionStr)
         {
-            _schemaChangingScripts = schemaChangingScripts;
+            _schemaChangingScripts.Clear();
             ConfigureConnections(connectionStr);
             if (_connection.State == System.Data.ConnectionState.Open)
             {
                 RunMigrations();
+                return new MigrationResult(_schemaChangingScripts);
             }
             else
             {
                 _log.LogInfo($"{nameof(PerformMigrations)}: Expected open connection.");
+                return null;
             }
         }
 

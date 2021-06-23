@@ -34,7 +34,7 @@ namespace MigratorUnitTests
             SetDatabaseMigratorSubstitute(Enumerable.Empty<(int, string)>(), Substitute.For<IStartupLogger>());
             try
             {
-                MigratorSubstitute.PerformMigrations(ConnectionString, null);
+                MigratorSubstitute.PerformMigrations(ConnectionString);
             }
             finally
             {
