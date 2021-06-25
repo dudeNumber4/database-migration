@@ -21,7 +21,8 @@ A system for automating the propogation of database changes throughout all dev/s
 
 #### Initial Configuration
 * Add migrator code to your service:
-  * `using var migrator = new DatabaseMigrator(new ConsoleStartupLogger());` // YourLogger is a façade to your logging system that implements IStartupLogger
+  * `using var migrator = new DatabaseMigrator(new ConsoleStartupLogger());`
+    * Logger is a façade to your logging system that implements IStartupLogger
   * `migrator.PerformMigrations(YOUR_CONNECTION_STRING);`
 * Start/run your service.
   * Your database should now have a table named MigrationsJournal.  If not, check whatever logging you plugged in above.
@@ -118,6 +119,7 @@ Let's assume that your `dev` database is in the starting state.  Here are the st
   a. _Multiple Branches_: If you create a branch, make some changes, update the database project, create another branch from that, make more changes, etc., your final generated script won't include changes you made in the first branch.
   b. _Merge/Rebase_: You create a branch, make some changes, merge/rebase onto another branch that has other changes, your final generated script will include changes already made in the other branch.
   c. The git hook for creation/cache only works if you create a new branch _and you've never created a branch by that name before_.  I don't currently know of a way around this; the hook would have to be quite a bit smarter to account for it.
+  d. Note that, upon running `CommitDatabaseScripts`, the system will compare local database project state with local database state and warn the user if the two are not in sync.
 * If the generated script doesn't include changes you expected, here are your options:
   * Modify the generated script as necessary before running `CommitDatabaseScripts`.
   * Delete the generated script and write your own as an Ad-Hoc script.
@@ -135,6 +137,9 @@ Let's assume that your `dev` database is in the starting state.  Here are the st
     * The generated script should contain just the changes you need.
 * In any case, if you're sure that you want to set the current state file to match what is in the database project, run script `./MigrationDatabase/UpdateDatabaseStateFile.ps1` to do so.
   * If you realize this didn't happen upon branch creation, for instance...
+
+##### Scripts that Change Schema
+* `PerformMigrations` returns a list of scripts that have been applied which were schema-changing.  The consuming service may decide to do something in response to that.
 
 ##### Merging
 * If your branch and another both add a new script there will be a merge conflict.  You will need to keep one and add the other under a new file name with the next number increment.

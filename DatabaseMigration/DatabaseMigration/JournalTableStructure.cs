@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace DatabaseMigration
 {
 
-    [SuppressMessage("Unk Category", "SA1502: Element should not be on a single line", Justification = "nope")]
     public class JournalTableStructure
     {
         public string TableName => "MigrationsJournal";

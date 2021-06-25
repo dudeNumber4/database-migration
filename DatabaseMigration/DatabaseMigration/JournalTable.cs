@@ -19,6 +19,7 @@ namespace DatabaseMigration
     public class JournalTable : DirectDatabaseConnection
     {
 
+        private static string SQL_SERVER_TABLE_LOCK_HINT = "TABLOCKX";
         private readonly string _journalTableCreationScript;
 
         internal JournalTable(string connectionString, 
@@ -84,7 +85,7 @@ namespace DatabaseMigration
                 // Explicit table lock hint.  Not often used, maybe I'm re-inventing a queue here, so be it.
                 // The timeout here is 30 seconds.  I couldn't find any way to modify that (not related to connection timeout which is just timeout to initial connection to server).
                 using var cmd = new SqlCommand($"select {_journalTableStructure.CompletedColumn}, {_journalTableStructure.BegunColumn} " +
-                                               $"from {_journalTableStructure.TableName} (TABLOCKX) where {_journalTableStructure.NumberColumn} = '{script.FileNumber}'", _connection, transaction);
+                                               $"from {_journalTableStructure.TableName} ({SQL_SERVER_TABLE_LOCK_HINT}) where {_journalTableStructure.NumberColumn} = '{script.FileNumber}'", _connection, transaction);
                 try
                 {
                     using var reader = cmd.ExecuteReader(CommandBehavior.SingleResult);
@@ -119,22 +120,18 @@ namespace DatabaseMigration
             var numberColumnName = _journalTableStructure.NumberColumn;
             var scriptsRun = new HashSet<int>();
 
-            using (var cmd = new SqlCommand($"select {numberColumnName} from {_journalTableStructure.TableName} where {_journalTableStructure.CompletedColumn} = 1", _connection))
+            using var cmd = new SqlCommand($"select {numberColumnName} from {_journalTableStructure.TableName} where {_journalTableStructure.CompletedColumn} = 1", _connection);
+            try
             {
-                try
+                using var reader = cmd.ExecuteReader(CommandBehavior.SingleResult);
+                while (reader.Read())
                 {
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult))
-                    {
-                        while (reader.Read())
-                        {
-                            scriptsRun.Add(reader.GetInt32(numberColumnName));
-                        }
-                    }
+                    scriptsRun.Add(reader.GetInt32(numberColumnName));
                 }
-                catch (SqlException ex)
-                {
-                    _log.LogInfo($"Error checking database to get list of applied scripts: {ex.Message}");
-                }
+            }
+            catch (SqlException ex)
+            {
+                _log.LogInfo($"Error checking database to get list of applied scripts: {ex.Message}");
             }
 
             return scriptsRun;
