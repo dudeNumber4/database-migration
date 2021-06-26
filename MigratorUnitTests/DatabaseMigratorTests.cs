@@ -1,9 +1,9 @@
-using FluentAssertions;
-using Microsoft.Extensions.Configuration;
 using DatabaseMigration;
+using DatabaseMigration.Utils;
+using FluentAssertions;
 using NSubstitute;
 using System;
-using System.Data.SqlClient;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Xunit;
@@ -14,106 +14,103 @@ namespace MigratorUnitTests
     public class DatabaseMigratorTests: IDisposable
     {
 
-        private DatabaseMigrator _databaseMigrator;
-        private IConfigurationRoot _config;
-        private string _connectionString;
-        private string _tempScriptPath;
+        private readonly DatabaseMigratorTestDriver _driver = new();
+        private readonly List<string> _tempFilePaths = new List<string>();
 
-        public DatabaseMigratorTests()
-        {
-            var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-            _config = builder.Build();
-        }
-
+        /// <summary>
+        /// Unfortunately, these both have to run together, in sequence.
+        /// </summary>
+        /// <param name="normalExecution"></param>
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
         public void PerformMigration(bool normalExecution)
         {
-            _connectionString = _config.GetConnectionString("migration");
-            //TableExists(DatabaseMigratorTestScripts.JournalTableExistsScript).Should().BeTrue("Journal table expected to be present");
-            ExecutePreScripts(normalExecution);
-            SetMigratorSubstitute();
+            const int SCRIPT_NUMBER = 2;
+            _driver.EnsureMigrationTableCreated();
+            _driver.SetDatabaseMigratorSubstitute(
+                // create table script
+                Enumerable.Repeat(CreateScript(SCRIPT_NUMBER, DatabaseMigratorTestScripts.CreateTableScript), 1),
+                Substitute.For<IStartupLogger>());
+            _driver.ExecutePreScripts(normalExecution, SCRIPT_NUMBER);
 
-            _connectionString.Should().NotBeNullOrEmpty("Connection string should've been configured.");
-
-            _databaseMigrator.PerformMigrations(_connectionString);
+            _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
             // normalExecution executes the script, "abnormal" means the migrator discovered another service instance and didn't execute it.
-            TableExists(DatabaseMigratorTestScripts.TableExistsScript).Should().Be(normalExecution, $"{nameof(_databaseMigrator)}, expected {(normalExecution ? "" : "not ")}to execute script.");
+            // Normal execution means that a table creation script ran; check for that now.
+            _driver.ScriptReturnsRows(DatabaseMigratorTestScripts.TableExistsScript).Should().Be(normalExecution, $"{nameof(DatabaseMigrator)}, expected {(normalExecution ? "" : "not ")}to execute script.");
         }
 
-        private void SetMigratorSubstitute()
+        [Fact]
+        public void PerformMigrationWhileSkippingAlreadyRunScripts()
         {
-            _databaseMigrator = Substitute.For<DatabaseMigrator>(TestLogger.Instance());
+            _driver.EnsureMigrationTableCreated();
 
-            var JOURNAL_TABLE_SCRIPT = @$"..\..\..\..\{nameof(DatabaseMigration)}\{nameof(DatabaseMigration)}\RuntimeScripts\1.sql"; // first should be journal table creation script.
-            File.Exists(JOURNAL_TABLE_SCRIPT).Should().BeTrue();
-            _tempScriptPath = Path.GetTempFileName();
-            File.WriteAllText(_tempScriptPath, DatabaseMigratorTestScripts.CreateTableScript);
-            // Return a script that simply creates a table.  Give it a high number/key so as to not clash with any existing scripts.  Yes, the test has way too much knowledge of the innards.
-            _databaseMigrator.GetScripts().Returns(Enumerable.Repeat((DatabaseMigratorTestScripts.TestScriptNumber, _tempScriptPath), 1));
-            _databaseMigrator.GetJournalTableCreationScript().Returns(File.ReadAllText(JOURNAL_TABLE_SCRIPT));
-        }
+            const int notYetRunScriptNumber = 4444;
+            const int alreadyRanScriptNumber = 999911;
 
-        private bool TableExists(string tableExistsScript)
-        {
-            var result = false;
+            _driver.ExecuteScript(DatabaseMigratorTestScripts.InsertAppliedScript(alreadyRanScriptNumber));
+            _driver.ExecuteScript(DatabaseMigratorTestScripts.InsertAppliedScript(999922));
+            _driver.ExecuteScript(DatabaseMigratorTestScripts.InsertAppliedScript(999933));
+
+            var scripts = new List<(int scriptNumber, string scriptPath)>
+            {
+                CreateScript(alreadyRanScriptNumber, DatabaseMigratorTestScripts.DO_NOTHING_SCRIPT),
+                CreateScript(notYetRunScriptNumber, DatabaseMigratorTestScripts.DO_NOTHING_SCRIPT)
+            };
+
+            var infoLogMessages = new List<string>();
+
             try
             {
-                using (var con = new SqlConnection(_connectionString))
-                {
-                    using (var cmd = new SqlCommand(tableExistsScript, con))
-                    {
-                        con.Open();
-                        using (var reader = cmd.ExecuteReader())
-                        if (reader.Read())
-                        {
-                            result = reader.HasRows;
-                        }
-                    }
-                }
+                var logger = Substitute.For<IStartupLogger>();
+                logger.LogInfo(Arg.Do<string>(s => { infoLogMessages.Add(s); }));
+                _driver.SetDatabaseMigratorSubstitute(scripts, logger);
+                _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
             }
             finally
             {
-                CleanupDatabase();
+                _driver.ExecuteScript(DatabaseMigratorTestScripts.DeleteScript(alreadyRanScriptNumber));
+                _driver.ExecuteScript(DatabaseMigratorTestScripts.DeleteScript(notYetRunScriptNumber));
+                _driver.ExecuteScript(DatabaseMigratorTestScripts.DeleteScript(999922));
+                _driver.ExecuteScript(DatabaseMigratorTestScripts.DeleteScript(999933));
             }
-            return result;
+
+            Assert.Contains($"Skipping script [{alreadyRanScriptNumber}]; already executed or may be in process from another client.", infoLogMessages);
+            Assert.Contains($"Script [{notYetRunScriptNumber}] successfully ran.", infoLogMessages);
+            Assert.Contains($"Script [{notYetRunScriptNumber}] successfully recorded in migration table.", infoLogMessages);
         }
 
-        void ExecutePreScripts(bool normalExecution)
+        [Fact]
+        public void DetectSchemaChangeScript()
         {
-            if (!normalExecution)
+            var scripts = new List<(int scriptNumber, string scriptPath)>
             {
-                // Non-happy path: another service has already started our script.
-                ExecuteScript(DatabaseMigratorTestScripts.SimulateOtherServiceScript);
-            }
-        }
-
-        private void CleanupDatabase()
-        {
-            ExecuteScript(DatabaseMigratorTestScripts.DropTableScript);
-            ExecuteScript(DatabaseMigratorTestScripts.DeleteJournalRecordScript);
-        }
-
-        private void ExecuteScript(string script)
-        {
-            using (var con = new SqlConnection(_connectionString))
-            {
-                con.Open();
-                using (var cmd = new SqlCommand(script, con))
-                {
-                    cmd.ExecuteNonQuery();
-                }
-            }
+                CreateScript(2, DatabaseMigratorTestScripts.CreateTableScript),
+                CreateScript(3, DatabaseMigratorTestScripts.InsertIntoTableScript),
+                CreateScript(4, DatabaseMigratorTestScripts.AlterTableScript)
+            };
+            _driver.SetDatabaseMigratorSubstitute(scripts, Substitute.For<IStartupLogger>());
+            var schemaChangingScripts = _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
+            schemaChangingScripts.SchemaChangingScripts.Should().NotBeNull();
+            schemaChangingScripts.SchemaChangingScripts.Should().HaveCount(2);
+            schemaChangingScripts.SchemaChangingScripts[0].Should().BeEquivalentTo(DatabaseMigratorTestScripts.CreateTableScript);
+            schemaChangingScripts.SchemaChangingScripts[1].Should().BeEquivalentTo(DatabaseMigratorTestScripts.AlterTableScript);
+            // Ensure the insert between the 2 schema checks ran
+            _driver.ScriptReturnsRows(DatabaseMigratorTestScripts.CheckForTableRows);
         }
 
         public void Dispose()
         {
-            _databaseMigrator?.Dispose();
-            if (File.Exists(_tempScriptPath))
-            {
-                File.Delete(_tempScriptPath);
-            }
+            _tempFilePaths.ForEach(p => File.Delete(p));
+            _driver.Dispose();
+        }
+
+        private (int scriptNumber, string scriptPath) CreateScript(int scriptNumber, string scriptContents)
+        {
+            var tempScriptPath = Path.GetTempFileName();
+            _tempFilePaths.Add(tempScriptPath);
+            File.WriteAllText(tempScriptPath, scriptContents ?? "");
+            return (scriptNumber, tempScriptPath);
         }
 
     }

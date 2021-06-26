@@ -3,7 +3,7 @@ using Microsoft.SqlServer.Management.Smo;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
@@ -11,10 +11,8 @@ using System.Text;
 namespace DatabaseMigration
 {
 
-    [SuppressMessage("Dispose", "CA1063", Justification = "Dispose WILL NOT WORK any other way")]
     [SuppressMessage("Dispose", "CA1816", Justification = "Dispose WILL NOT WORK any other way")]
     [SuppressMessage("Disallow protected fields", "CA1051", Justification = "OO disallowed?")]
-    [SuppressMessage("same as above", "SA1401", Justification = "I don't get it")]
     public class DirectDatabaseConnection: IDisposable
     {
 
@@ -26,10 +24,7 @@ namespace DatabaseMigration
         protected JournalTableStructure _journalTableStructure = new JournalTableStructure();
         protected Server _serverConnection;
 
-        public DirectDatabaseConnection(IStartupLogger log)
-        {
-            _log = log;
-        }
+        public DirectDatabaseConnection(IStartupLogger log) => _log = log;
 
         public void Dispose()
         {

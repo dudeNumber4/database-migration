@@ -1,21 +1,19 @@
+using DatabaseMigration.Utils;
+using Microsoft.SqlServer.Management.Common;
+using Microsoft.SqlServer.Management.Smo;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Diagnostics.CodeAnalysis;
+using Microsoft.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.SqlServer.Management.Common;
-using Microsoft.SqlServer.Management.Smo;
-using DatabaseMigration.Utils;
 
 namespace DatabaseMigration
 {
 
     public interface IDatabaseMigrator
     {
-        void PerformMigrations(string connectionString);
+        MigrationResult PerformMigrations(string connectionString);
     }
 
     /// <summary>
@@ -23,9 +21,6 @@ namespace DatabaseMigration
     /// <see cref="_scriptFolderPath"/> is the folder containing migration scripts.
     /// Using basic ADO to connect to database to keep simple; only one table and a few columns to interact with, and we are doing this in a context where DI isn't even up and running.
     /// </summary>
-    [SuppressMessage("Globalization", "CA1305", Justification="I don't need provider here")]
-    [SuppressMessage("Globalization", "CA1304", Justification="I don't need provider here")]
-    [SuppressMessage("Security Category", "CA2100", Justification = "SQL Statements are generated within")]
     public class DatabaseMigrator : DirectDatabaseConnection, IDatabaseMigrator
     {
 
@@ -33,26 +28,28 @@ namespace DatabaseMigration
         /// Folder where scripts live.
         /// </summary>
         private string _scriptFolderPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), nameof(DatabaseMigration), "RuntimeScripts");
+        private readonly List<string> _schemaChangingScripts = new();
 
         public DatabaseMigrator(IStartupLogger log)
-            : base(log)
-        {
-        }
+            : base(log) { }
 
         /// <summary>
         /// Used to execute scripts from our known location
         /// </summary>
         /// <param name="connectionStr">Connection String.</param>
-        public void PerformMigrations(string connectionStr)
+        public MigrationResult PerformMigrations(string connectionStr)
         {
+            _schemaChangingScripts.Clear();
             ConfigureConnections(connectionStr);
             if (_connection.State == System.Data.ConnectionState.Open)
             {
                 RunMigrations();
+                return new MigrationResult(_schemaChangingScripts);
             }
             else
             {
                 _log.LogInfo($"{nameof(PerformMigrations)}: Expected open connection.");
+                return null;
             }
         }
 
@@ -85,16 +82,39 @@ namespace DatabaseMigration
             {
                 try
                 {
-                    foreach ((int fileNumber, string filePath) script in GetScripts())
+                    var completedScriptNumbers = journalTable.GetCompletedScriptNumbers();
+                    foreach (var script in GetScripts())
                     {
-                        if (journalTable.TryAcquireLockFor((script.fileNumber, script.filePath)))
+                        if (completedScriptNumbers.Contains(script.fileNumber))
                         {
-                            ExecuteScript(script.fileNumber, File.ReadAllText(script.filePath));
-                            journalTable.RecordScriptInJournal(script, false);
+                            LogScriptAlreadyRan(script.fileNumber);
+                            continue;
+                        }
+
+                        string scriptText = File.ReadAllText(script.filePath);
+                        if (string.IsNullOrEmpty(scriptText))
+                        {
+                            _log.LogInfo($"Encountered empty script during {nameof(DatabaseMigrator.RunMigrations)}.  Script number: {script.fileNumber}");
+                            continue;
+                        }
+                        var scriptDetails = new ScriptDetails(script.fileNumber, script.filePath, SchemaChangeDetection.SchemaChanged(_serverConnection, scriptText, _log));
+
+                        if (journalTable.TryAcquireLockFor(scriptDetails))
+                        {
+                            if (ExecuteScript(script.fileNumber, scriptText))
+                            {
+                                _log.LogInfo($"Script [{script.fileNumber}] successfully ran.");
+                            }
+                            if (journalTable.RecordScriptInJournal(scriptDetails, false))
+                            {
+                                _log.LogInfo($"Script [{script.fileNumber}] successfully recorded in migration table.");
+                                if (scriptDetails.SchemaChanging && (_schemaChangingScripts != null))
+                                    _schemaChangingScripts.Add(scriptText);
+                            }
                         }
                         else
                         {
-                            _log.LogInfo($"Skipping script [{script.fileNumber}]; already executed or may be in process from another client.");
+                            LogScriptAlreadyRan(script.fileNumber);
                         }
                     }
                 }
@@ -107,6 +127,11 @@ namespace DatabaseMigration
             {
                 _log.LogInfo($"Unable to create/ensure presence of table {_journalTableStructure.TableName}");
             }
+        }
+
+        private void LogScriptAlreadyRan(int fileNumber)
+        {
+            _log.LogInfo($"Skipping script [{fileNumber}]; already executed or may be in process from another client.");
         }
 
         private bool ExecuteScript(int scriptNumber, string script)

@@ -1,6 +1,7 @@
 ﻿using DatabaseMigration;
 using DatabaseMigration.Utils;
 using System;
+using System.Collections.Generic;
 
 namespace Service
 {
@@ -12,7 +13,8 @@ namespace Service
         {
             // :Configure: Put this somewhere in your service startup passing your connection string.
             using var migrator = new DatabaseMigrator(new ConsoleStartupLogger());
-            migrator.PerformMigrations(@"Server=.\SQLExpress;Trusted_Connection=Yes;Database=MigrationDatabase");
+            var schemaChangingScripts = migrator.PerformMigrations(@"Server=.\SQLExpress;Trusted_Connection=Yes;Database=MigrationDatabase");
+            schemaChangingScripts?.SchemaChangingScripts.ForEach(s => Console.WriteLine($"Encountered schema changing script: {Environment.NewLine}{s}"));
             Console.WriteLine("Done with migrations.");
             Console.ReadLine();
             return 0;

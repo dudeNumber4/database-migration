@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Xunit;
+using NSubstitute;
 
 namespace MigratorUnitTests
 {
@@ -23,7 +24,7 @@ namespace MigratorUnitTests
             Directory.CreateDirectory(TEST_DIR);
             using (var m = new MemoryStream(Encoding.UTF8.GetBytes(TEST_FILE_CONTENTS)))
             {
-                FileUtils.StreamToFile(m, FilePath(), TestLogger.Instance());
+                FileUtils.StreamToFile(m, FilePath(), Substitute.For<IStartupLogger>());
             }
             File.ReadAllText(FilePath()).Should().Be(TEST_FILE_CONTENTS);
         }
@@ -34,9 +35,9 @@ namespace MigratorUnitTests
             Dispose();
             Directory.CreateDirectory(TEST_DIR);
             StreamWriter sw = File.CreateText(FilePath());
-            FileUtils.SafeDeleteFile(FilePath(), false, TestLogger.Instance()); // no blow-up
+            FileUtils.SafeDeleteFile(FilePath(), false, Substitute.For<IStartupLogger>()); // no blow-up
             sw.Close();
-            FileUtils.SafeDeleteFile(FilePath(), true, TestLogger.Instance());
+            FileUtils.SafeDeleteFile(FilePath(), true, Substitute.For<IStartupLogger>());
             File.Exists(FilePath()).Should().BeFalse();
         }
 
@@ -44,7 +45,7 @@ namespace MigratorUnitTests
         {
             if (Directory.Exists(TEST_DIR))
             {
-                DirectoryUtils.FlushDirectory(TEST_DIR, TestLogger.Instance(), true);
+                DirectoryUtils.FlushDirectory(TEST_DIR, Substitute.For<IStartupLogger>(), true);
             }
         }
 
