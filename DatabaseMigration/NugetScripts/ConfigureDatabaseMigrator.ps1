@@ -47,6 +47,10 @@ if ($null -eq $serviceProjectFilePath) {
     Write-Host "Expected to find .csproj under [$serviceProjectSearchRoot]" -ForegroundColor Red
     exit
 }
+if ($serviceProjectFilePath -is [Array]) {
+  Write-Host "Expected to find .csproj under [$serviceProjectSearchRoot] but found multiple paths.  Is this folder not under your service project?" -ForegroundColor Red
+  exit
+}
 try {
     AddRuntimeScriptsProjectReference $serviceProjectFilePath
     $serviceProjectRootPath = ($serviceProjectFilePath | Split-Path)  # absolute
@@ -107,11 +111,15 @@ catch {
     exit
 }
 
-if (-not (Test-Path "$runtimeScriptsDir\1.sql")) { # assume if it's there, it has already been committed.
+$firstScriptDestPath = "$runtimeScriptsDir\1.sql"
+if (-not (Test-Path $firstScriptDestPath)) { # assume if it's there, it has already been committed.
     Write-Host 'Committing MigrationsJournal script as 1.sql.' -ForegroundColor Green
     if (-not (CommitScriptAsResource $migrationsJournalScriptPath $runtimeScriptsDir $serviceProjectFilePath)) {
         exit
     }
+} else {
+  # Local copy of migration table script may be old
+  Copy-Item -Force $migrationsJournalScriptPath $firstScriptDestPath
 }
 
 Write-Host 'Adding git hooks.' -ForegroundColor Green

@@ -93,8 +93,10 @@ namespace MigratorUnitTests
             var schemaChangingScripts = _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
             schemaChangingScripts.SchemaChangingScripts.Should().NotBeNull();
             schemaChangingScripts.SchemaChangingScripts.Should().HaveCount(2);
-            schemaChangingScripts.SchemaChangingScripts[0].Should().BeEquivalentTo(DatabaseMigratorTestScripts.CreateTableScript);
-            schemaChangingScripts.SchemaChangingScripts[1].Should().BeEquivalentTo(DatabaseMigratorTestScripts.AlterTableScript);
+            schemaChangingScripts.SchemaChangingScripts[0].scriptContents.Should().BeEquivalentTo(DatabaseMigratorTestScripts.CreateTableScript);
+            schemaChangingScripts.SchemaChangingScripts[0].scriptNumber.Should().Be(scripts[0].scriptNumber);
+            schemaChangingScripts.SchemaChangingScripts[1].scriptContents.Should().BeEquivalentTo(DatabaseMigratorTestScripts.AlterTableScript);
+            schemaChangingScripts.SchemaChangingScripts[1].scriptNumber.Should().Be(scripts[2].scriptNumber);
             // Ensure the insert between the 2 schema checks ran
             _driver.ScriptReturnsRows(DatabaseMigratorTestScripts.CheckForTableRows);
         }

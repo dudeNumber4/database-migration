@@ -9,7 +9,7 @@ namespace DatabaseMigration
     /// <summary>
     /// Could include failed scripts; for now consumer only cares about SchemaChangingScripts.
     /// </summary>
-    public record MigrationResult(List<string> SchemaChangingScripts)
+    public record MigrationResult(List<(string scriptContents, int scriptNumber)> SchemaChangingScripts)
     {
     }
 }

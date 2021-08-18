@@ -140,20 +140,20 @@ namespace DatabaseMigration
         /// <summary>
         /// Add a record that a script is being (begin true) or has completed (begin false) executed.
         /// </summary>
-        /// <param name="script">number and script path</param>
+        /// <param name="scriptDetails">number and script path</param>
         /// <param name="begin">Whether we're recording the begin or end of script execution.</param>
         /// <param name="transaction">A SQL transaction is passed upon the initial write of the record for asynchronously running clients.</param>
         /// <returns>Pass/fail</returns>
-        internal bool RecordScriptInJournal(ScriptDetails script, bool begin, SqlTransaction transaction = null)
+        internal bool RecordScriptInJournal(ScriptDetails scriptDetails, bool begin, SqlTransaction transaction = null)
         {
             Debug.Assert(_failedScripts != null, "HashSet of failed scripts is null.");
             var result = false;
-            var scriptFileName = Path.GetFileName(script.FilePath);
+            var scriptFileName = Path.GetFileName(scriptDetails.FilePath);
 
             if (begin)
-                DeletePriorEntry(script.FileNumber, transaction);
+                DeletePriorEntry(scriptDetails.FileNumber, transaction);
 
-            var commandText = GetCommandText(script, begin, scriptFileName);
+            var commandText = GetCommandText(scriptDetails, begin, scriptFileName);
             using var cmd = new SqlCommand(commandText, _connection, transaction);
             try
             {
@@ -169,28 +169,27 @@ namespace DatabaseMigration
             return result;
         }
 
-        private string GetCommandText(ScriptDetails script, bool begin, string scriptFileName)
+        private string GetCommandText(ScriptDetails scriptDetails, bool begin, string scriptFileName)
         {
             var msg = string.Empty;
             char completed = '1';
-            var schemaChanging = false;
             if (!begin)
             {
-                if (_failedScripts.ContainsKey(script.FileNumber))
+                if (_failedScripts.ContainsKey(scriptDetails.FileNumber))
                 {
                     completed = '0';
-                    msg = _failedScripts[script.FileNumber].Replace("'", "''"); // value is err msg
+                    msg = _failedScripts[scriptDetails.FileNumber].Replace("'", "''"); // value is err msg
                 }
             }
             // Note: table has some defaults.
             return begin ?
-                   $"insert {_journalTableStructure.TableName}({_journalTableStructure.NumberColumn}, {_journalTableStructure.BegunColumn}) values ('{script.FileNumber}', GetUtcDate())"
+                   $"insert {_journalTableStructure.TableName}({_journalTableStructure.NumberColumn}, {_journalTableStructure.BegunColumn}) values ('{scriptDetails.FileNumber}', GetUtcDate())"
                    : $"update {_journalTableStructure.TableName} set " +
                      $"{_journalTableStructure.CompletedColumn} = {completed}, " +
                      $"{_journalTableStructure.ScriptColumn} = '{scriptFileName}', " +
                      $"{_journalTableStructure.MessageColumn} = '{msg}', " +
-                     $"{_journalTableStructure.SchemaChangedColumn} = {(schemaChanging ? '1' : '0')}" +
-                     $" where {_journalTableStructure.NumberColumn} = '{script.FileNumber}'";
+                     $"{_journalTableStructure.SchemaChangedColumn} = {(scriptDetails.SchemaChanging ? '1' : '0')}" +
+                     $" where {_journalTableStructure.NumberColumn} = '{scriptDetails.FileNumber}'";
         }
 
         /// <summary>

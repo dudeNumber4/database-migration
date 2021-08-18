@@ -28,7 +28,7 @@ namespace DatabaseMigration
         /// Folder where scripts live.
         /// </summary>
         private string _scriptFolderPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), nameof(DatabaseMigration), "RuntimeScripts");
-        private readonly List<string> _schemaChangingScripts = new();
+        private readonly List<(string, int)> _schemaChangingScripts = new();
 
         public DatabaseMigrator(IStartupLogger log)
             : base(log) { }
@@ -109,7 +109,7 @@ namespace DatabaseMigration
                             {
                                 _log.LogInfo($"Script [{script.fileNumber}] successfully recorded in migration table.");
                                 if (scriptDetails.SchemaChanging && (_schemaChangingScripts != null))
-                                    _schemaChangingScripts.Add(scriptText);
+                                    _schemaChangingScripts.Add((scriptText, script.fileNumber));
                             }
                         }
                         else

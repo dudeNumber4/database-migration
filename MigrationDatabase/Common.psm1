@@ -107,17 +107,20 @@ function BuildDacpac {
         #& $global:MSBuildPath /p:OutDir=$global:BuildOutputDir $ProjPath
   
         # target path should've been set to what was the previous state of the database.
-        if (-not (Test-Path $global:TargetDacPath)) { # "source": see GenerateDiffScript
+        if (-not (Test-Path $global:TargetDacPath)) { # "target": see GenerateDiffScript
             throw "Expected file [$global:TargetDacPath], to be present, but it's not. That file should've been generated upon branch creation. Have you run deploy-database-git-scripts.ps1? See ReadMe."
         }
 
         #$dte.ExecuteCommand('Build.BuildOnlyProject') # nope
         # This is supposed to just build the selected project, but it seems to build all.  Sometimes?
         $dte.ExecuteCommand('Build.BuildSelection')
-        # The above command is asynchronous.  The subsequent functions rely on the build having finished.  Sleep is easiest; small price to pay.
-        Start-Sleep -Seconds 6
-
-        if (-not (Test-Path $global:SourceDacPath)) { # "source": see GenerateDiffScript
+        
+        # The above command is asynchronous.  The subsequent functions rely on the build having finished.  Wait with timeout.
+        $ticks = [System.Environment]::TickCount
+        while ((-not (Test-Path $global:SourceDacPath)) -and ([System.Environment]::TickCount - $ticks -lt 10000)) { # "source": see GenerateDiffScript
+          Start-Sleep -Seconds 1
+        }
+        if (-not (Test-Path $global:SourceDacPath)) {
             throw "Expected build to generate file [$global:SourceDacPath], but it did not. That file is necessary in order to generate a diff script."
         }
     }
