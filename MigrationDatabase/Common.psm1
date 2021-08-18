@@ -117,7 +117,7 @@ function BuildDacpac {
         
         # The above command is asynchronous.  The subsequent functions rely on the build having finished.  Wait with timeout.
         $ticks = [System.Environment]::TickCount
-        while ((-not (Test-Path $global:SourceDacPath)) -and ([System.Environment]::TickCount - $ticks -lt 10000)) { # "source": see GenerateDiffScript
+        while ((-not (Test-Path $global:SourceDacPath)) -and ([System.Environment]::TickCount - $ticks -lt 30000)) { # "source": see GenerateDiffScript
           Start-Sleep -Seconds 1
         }
         if (-not (Test-Path $global:SourceDacPath)) {
