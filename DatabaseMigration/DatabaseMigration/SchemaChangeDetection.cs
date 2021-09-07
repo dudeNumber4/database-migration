@@ -12,6 +12,8 @@ namespace DatabaseMigration
     /// <summary>
     /// At time of writing, Smo has a bug with the utility command 'go'.  It blows up on some proper queries containing go.
     /// In that case, it will always return false.
+    /// Not sure what the heck, but in DatabaseMigrator.cs we call server.ConnectionContext.ExecuteNonQuery and go works.  Here we call ExecuteReader and it doesn't.
+    /// And this thread indicates it should never work.
     /// https://github.com/microsoft/sqlmanagementobjects/issues/53
     /// </summary>
     internal static class SchemaChangeDetection
@@ -42,8 +44,13 @@ namespace DatabaseMigration
             }
             catch (Exception ex)
             {
-                log.LogInfo("Following error attempting to detect schema changing script.");
-                log.LogException(ex);
+                log.LogInfo($"Error attempting to detect schema changing script: {ex.Message}");
+                var inner = ex.InnerException;
+                while (inner != null)
+                {
+                    log.LogInfo($"Schema changing error cont: {inner.Message}");
+                    inner = inner.InnerException;
+                }
             }
             finally
             {
