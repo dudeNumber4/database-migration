@@ -1,4 +1,5 @@
 using DatabaseMigration.Utils;
+using DatabaseMigration.DatabaseMigration.SchemaChangeDetection;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
 using System;
@@ -97,7 +98,7 @@ namespace DatabaseMigration
                             _log.LogInfo($"Encountered empty script during {nameof(DatabaseMigrator.RunMigrations)}.  Script number: {script.fileNumber}");
                             continue;
                         }
-                        var scriptDetails = new ScriptDetails(script.fileNumber, script.filePath, SchemaChangeDetection.SchemaChanged(_serverConnection, scriptText, _log));
+                        var scriptDetails = new ScriptDetails(script.fileNumber, script.filePath, SchemaChangeDetector.SchemaChanged(_serverConnection, scriptText, _log));
 
                         if (journalTable.TryAcquireLockFor(scriptDetails))
                         {

@@ -7,7 +7,7 @@ A system for automating the propogation of database changes throughout all dev/s
   * Database compare: `UpdateProject.scmp`
   * Well known "Scripts" directory and it's 2 subdirectories.
   * `DatabaseState.dacpac`: A file that captures database state represented by the project.
-* A .Net project that processes the scripts.
+* A .Net project (your service) that processes the scripts.
   * DatabaseMigration/RuntimeScripts: Folder that contains the scripts that originated in the database project.
 * Git Hooks: Refer to the separate ReadMe in the GitHooks folder.
 
@@ -17,13 +17,14 @@ A system for automating the propogation of database changes throughout all dev/s
 3. Sql Server.  `DatabaseMigrator.cs` assumes Sql Server, but could probably be easily modified for a different database.  There must only be one database to manage in the repository where this is put into place.
 4. Git.
 5. Powershell v7 or greater.  To ensure it's installed correctly, open a git bash shell and type `where pwsh`.  If it can't be found, find where it's installed and ensure that's on your path.
-6. Note: Your database project name and database name are expected to match.  I think this is a good thing.
+6. Note: You are expected to initially create your database project; the initial configuration script doesn't do that.  Your database project name and database name are expected to match.
 
 #### Initial Configuration
+* Install nuget package under your service.  Install will throw a ReadMe with initial configuration instructions that includes a powershell configuration srcipt.
 * Add migrator code to your service:
   * `using var migrator = new DatabaseMigrator(new ConsoleStartupLogger());`
     * Logger is a façade to your logging system that implements IStartupLogger
-  * `migrator.PerformMigrations(YOUR_CONNECTION_STRING);`
+  * `var results = migrator.PerformMigrations(YOUR_CONNECTION_STRING); // results contain schema changing scripts`
 * Start/run your service.
   * Your database should now have a table named MigrationsJournal.  If not, check whatever logging you plugged in above.
 * Set the current state of your database project:
