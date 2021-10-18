@@ -105,13 +105,11 @@ namespace DatabaseMigration
                             if (ExecuteScript(script.fileNumber, scriptText))
                             {
                                 _log.LogInfo($"Script [{script.fileNumber}] successfully ran.");
-                            }
-                            if (journalTable.RecordScriptInJournal(scriptDetails, false))
-                            {
-                                _log.LogInfo($"Script [{script.fileNumber}] successfully recorded in migration table.");
                                 if (scriptDetails.SchemaChanging && (_schemaChangingScripts != null))
                                     _schemaChangingScripts.Add((scriptText, script.fileNumber));
                             }
+                            if (journalTable.RecordScriptInJournal(scriptDetails, false))
+                                _log.LogInfo($"Script [{script.fileNumber}] successfully recorded in migration table.");
                         }
                         else
                         {

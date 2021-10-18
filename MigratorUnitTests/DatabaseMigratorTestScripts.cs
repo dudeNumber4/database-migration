@@ -10,6 +10,7 @@ namespace MigratorUnitTests
 
         private const string CREATE_TABLE = "create table [{0}](id int)";
         private const string ALTER_TABLE = "alter table {0} add id2 int";
+        private const string ALTER_FAILING = "Alter table {0} alter column x nvarchar(max)";
         private const string INSERT_INTO_TABLE = "insert {0} values(1, 1)";
         private const string CHECK_FOR_TABLE_ROWS = "select 1 from {0}";
         private const string DROP_TABLE = "drop table if exists {0}";
@@ -20,6 +21,7 @@ namespace MigratorUnitTests
 
         public static string CreateTableScript => string.Format(CREATE_TABLE, nameof(DatabaseMigratorTests));
         public static string AlterTableScript => string.Format(ALTER_TABLE, nameof(DatabaseMigratorTests));
+        public static string AlterTableFailing => string.Format(ALTER_FAILING, nameof(DatabaseMigratorTests));
         public static string InsertIntoTableScript => string.Format(INSERT_INTO_TABLE, nameof(DatabaseMigratorTests));
         public static string CheckForTableRows => string.Format(CHECK_FOR_TABLE_ROWS, nameof(DatabaseMigratorTests));
 

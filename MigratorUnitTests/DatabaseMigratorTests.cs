@@ -86,17 +86,18 @@ namespace MigratorUnitTests
             var scripts = new List<(int scriptNumber, string scriptPath)>
             {
                 CreateScript(2, DatabaseMigratorTestScripts.CreateTableScript),
-                CreateScript(3, DatabaseMigratorTestScripts.InsertIntoTableScript),
-                CreateScript(4, DatabaseMigratorTestScripts.AlterTableScript)
+                CreateScript(3, DatabaseMigratorTestScripts.InsertIntoTableScript),  // this one fails
+                CreateScript(4, DatabaseMigratorTestScripts.AlterTableScript),
+                CreateScript(5, DatabaseMigratorTestScripts.AlterTableFailing)
             };
             _driver.SetDatabaseMigratorSubstitute(scripts, Substitute.For<IStartupLogger>());
-            var schemaChangingScripts = _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
-            schemaChangingScripts.SchemaChangingScripts.Should().NotBeNull();
-            schemaChangingScripts.SchemaChangingScripts.Should().HaveCount(2);
-            schemaChangingScripts.SchemaChangingScripts[0].scriptContents.Should().BeEquivalentTo(DatabaseMigratorTestScripts.CreateTableScript);
-            schemaChangingScripts.SchemaChangingScripts[0].scriptNumber.Should().Be(scripts[0].scriptNumber);
-            schemaChangingScripts.SchemaChangingScripts[1].scriptContents.Should().BeEquivalentTo(DatabaseMigratorTestScripts.AlterTableScript);
-            schemaChangingScripts.SchemaChangingScripts[1].scriptNumber.Should().Be(scripts[2].scriptNumber);
+            var migrationResult = _driver.MigratorSubstitute.PerformMigrations(_driver.ConnectionString);
+            migrationResult.SchemaChangingScripts.Should().NotBeNull();
+            migrationResult.SchemaChangingScripts.Should().HaveCount(2);  // the one that failed should not be included.
+            migrationResult.SchemaChangingScripts[0].scriptContents.Should().BeEquivalentTo(DatabaseMigratorTestScripts.CreateTableScript);
+            migrationResult.SchemaChangingScripts[0].scriptNumber.Should().Be(scripts[0].scriptNumber);
+            migrationResult.SchemaChangingScripts[1].scriptContents.Should().BeEquivalentTo(DatabaseMigratorTestScripts.AlterTableScript);
+            migrationResult.SchemaChangingScripts[1].scriptNumber.Should().Be(scripts[2].scriptNumber);
             // Ensure the insert between the 2 schema checks ran
             _driver.ScriptReturnsRows(DatabaseMigratorTestScripts.CheckForTableRows);
         }
